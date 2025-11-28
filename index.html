@@ -845,7 +845,29 @@
             iniciarSalvamentoAutomatico();
         });
 
-        // Função para enviar progresso para a planilha
+        // Função para obter data/hora no fuso de Brasília (-1H)
+        function getDataHoraBrasilia() {
+            const agora = new Date();
+            // Ajusta para fuso horário de Brasília (UTC-3)
+            const offsetBrasilia = -3 * 60; // -3 horas em minutos
+            const offsetLocal = agora.getTimezoneOffset();
+            const diferenca = offsetBrasilia + offsetLocal;
+            
+            // Cria nova data ajustada
+            const dataBrasilia = new Date(agora.getTime() + diferenca * 60000);
+            
+            // Formata para DD/MM/AAAA HH:MM:SS
+            const dia = dataBrasilia.getDate().toString().padStart(2, '0');
+            const mes = (dataBrasilia.getMonth() + 1).toString().padStart(2, '0');
+            const ano = dataBrasilia.getFullYear();
+            const horas = dataBrasilia.getHours().toString().padStart(2, '0');
+            const minutos = dataBrasilia.getMinutes().toString().padStart(2, '0');
+            const segundos = dataBrasilia.getSeconds().toString().padStart(2, '0');
+            
+            return `${dia}/${mes}/${ano} ${horas}:${minutos}:${segundos}`;
+        }
+
+        // Função para enviar progresso para a planilha - VERSÃO CORRIGIDA
         function enviarProgressoParaPlanilha() {
             if (!usuarioLogado) return;
             
@@ -854,10 +876,10 @@
                 codigo: usuarioLogado.codigo,
                 'aulas concluídas': aulasConcluidas.length,
                 'aulas disponíveis': todasAulas.length,
-                'ultimo acesso': new Date().toLocaleDateString('pt-BR')
+                'ultimo acesso': getDataHoraBrasilia()
             };
             
-            console.log('📤 Enviando dados para planilha:', dadosProgresso);
+            console.log('📤 Enviando dados COMPLETOS para planilha:', dadosProgresso);
             
             // Usa a função doPost da sua API
             fetch(API_URL, {
@@ -1433,7 +1455,7 @@
                     codigo: usuarioLogado.codigo,
                     'aulas concluídas': aulasConcluidas.length,
                     'aulas disponíveis': todasAulas.length,
-                    'ultimo acesso': new Date().toLocaleDateString('pt-BR')
+                    'ultimo acesso': getDataHoraBrasilia()
                 };
                 
                 // Usa navigator.sendBeacon para garantir o envio
