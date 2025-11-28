@@ -870,23 +870,26 @@
             return `${dia}/${mes}/${ano} ${horas}:${minutos}:${segundos}`;
         }
 
-        // Função para enviar progresso para a planilha
+        // Função para enviar progresso para a planilha - VERSÃO ROBUSTA
         function enviarProgressoParaPlanilha() {
-            if (!usuarioLogado) return;
-            
-            // Garante que todasAulas está carregado antes de enviar
-            if (todasAulas.length === 0) {
-                setTimeout(enviarProgressoParaPlanilha, 1000);
+            if (!usuarioLogado) {
+                console.log('⚠️ Usuário não logado');
                 return;
             }
+            
+            // Se não tem aulas carregadas, tenta enviar mesmo assim com dados básicos
+            const totalAulas = todasAulas.length > 0 ? todasAulas.length : 25; // Fallback
+            const aulasConcluidasCount = aulasConcluidas.length;
             
             const dadosProgresso = {
                 tipo: 'usuarios',
                 codigo: usuarioLogado.codigo,
-                'aulas concluídas': aulasConcluidas.length,
-                'aulas disponíveis': todasAulas.length,
+                'aulas concluídas': aulasConcluidasCount,
+                'aulas disponíveis': totalAulas,
                 'ultimo acesso': getDataHoraRondonia()
             };
+            
+            console.log('📤 Enviando progresso:', dadosProgresso);
             
             fetch(API_URL, {
                 method: 'POST',
@@ -895,16 +898,24 @@
                 },
                 body: JSON.stringify(dadosProgresso)
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro HTTP: ' + response.status);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.status === "ok") {
                     mostrarStatusSalvamento('✓ Salvo', 'var(--success)');
+                    console.log('✅ Progresso salvo na planilha!');
                 } else {
                     mostrarStatusSalvamento('❌ Erro', 'var(--danger)');
+                    console.error('❌ Erro da API:', data.mensagem);
                 }
             })
             .catch(err => {
                 mostrarStatusSalvamento('⚠️ Offline', 'var(--warning)');
+                console.error('❌ Erro de conexão:', err);
             });
         }
 
@@ -995,18 +1006,32 @@
             carregarAulas();
             document.getElementById('buscar-aula').addEventListener('input', filtrarAulas);
             
-            // Salva progresso inicial
+            // ✅ CORREÇÃO: Envia progresso IMEDIATAMENTE após login
+            // Tenta enviar a cada 2 segundos até conseguir
+            let tentativas = 0;
+            const intervaloLogin = setInterval(() => {
+                tentativas++;
+                
+                if (todasAulas.length > 0) {
+                    console.log('✅ Aulas carregadas, enviando progresso...');
+                    enviarProgressoParaPlanilha();
+                    clearInterval(intervaloLogin);
+                } else if (tentativas >= 10) { // Máximo 20 segundos
+                    console.log('⚠️ Timeout - enviando mesmo sem aulas carregadas');
+                    enviarProgressoParaPlanilha();
+                    clearInterval(intervaloLogin);
+                } else {
+                    console.log('⏳ Aguardando carregamento das aulas...', tentativas);
+                }
+            }, 2000);
+            
+            // ✅ ENVIO EXTRA após 10 segundos (backup)
             setTimeout(() => {
                 if (todasAulas.length > 0) {
+                    console.log('🔄 Envio de backup após 10 segundos');
                     enviarProgressoParaPlanilha();
-                } else {
-                    setTimeout(() => {
-                        if (todasAulas.length > 0) {
-                            enviarProgressoParaPlanilha();
-                        }
-                    }, 2000);
                 }
-            }, 1000);
+            }, 10000);
         }
 
         function abrirAcessos() {
