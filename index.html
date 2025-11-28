@@ -625,12 +625,6 @@
         background: #dfe6e9;
     }
     
-    .status-salvamento {
-        font-size: 0.7em;
-        margin-left: 5px;
-        transition: all 0.3s ease;
-    }
-    
     @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
@@ -749,7 +743,7 @@
                 </div>
                 
                 <div class="stats">
-                    <h4>Estatísticas <span class="status-salvamento" id="status-salvamento" style="color: var(--success);">✓</span></h4>
+                    <h4>Estatísticas</h4>
                     <div class="stat-item">
                         <strong id="total-aulas">0</strong> aulas disponíveis
                     </div>
@@ -822,8 +816,8 @@
 
     <script>
         // URLs das APIs
-        const API_URL = "https://script.google.com/macros/s/AKfycbzumHQfcrtCPom77u1IyQ_2R1GhytF9ivJQ7FW89xiJ37MIOvvQ6yx5TtmgZir8JNxFPA/exec";
-        const API_AULAS = "https://script.google.com/macros/s/AKfycbzumHQfcrtCPom77u1IyQ_2R1GhytF9ivJQ7FW89xiJ37MIOvvQ6yx5TtmgZir8JNxFPA/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycby47xe8yifKs-YmH3PUjLHYkmcb_FpnqDrrwS7XJuyX58Fcgk2KNiLIDU5V6Ozycevo/exec";
+        const API_AULAS = "https://script.google.com/macros/s/AKfycby47xe8yifKs-YmH3PUjLHYkmcb_FpnqDrrwS7XJuyX58Fcgk2KNiLIDU5V6Ozycevo/exec";
         
         let usuarioLogado = null;
         let todasAulas = [];
@@ -834,6 +828,8 @@
         
         let progressoAulas = {};
         let aulasConcluidas = [];
+        let usuariosMap = {};
+        let intervaloAutoSave;
 
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('input-senha').addEventListener('keypress', function(e) {
@@ -847,99 +843,7 @@
                     fazerLogin();
                 }
             });
-            
-            // Inicia o salvamento automático
-            iniciarSalvamentoAutomatico();
         });
-
-        // Função para obter data/hora no fuso de Rondônia (UTC-4)
-        function getDataHoraRondonia() {
-            const agora = new Date();
-            
-            // Ajusta para fuso horário de Rondônia (UTC-4)
-            const dataRondonia = new Date(agora.getTime() - (4 * 60 * 60 * 1000));
-            
-            // Formata para DD/MM/AAAA HH:MM:SS
-            const dia = dataRondonia.getUTCDate().toString().padStart(2, '0');
-            const mes = (dataRondonia.getUTCMonth() + 1).toString().padStart(2, '0');
-            const ano = dataRondonia.getUTCFullYear();
-            const horas = dataRondonia.getUTCHours().toString().padStart(2, '0');
-            const minutos = dataRondonia.getUTCMinutes().toString().padStart(2, '0');
-            const segundos = dataRondonia.getUTCSeconds().toString().padStart(2, '0');
-            
-            return `${dia}/${mes}/${ano} ${horas}:${minutos}:${segundos}`;
-        }
-
-        // Função para enviar progresso para a planilha - VERSÃO ROBUSTA
-        function enviarProgressoParaPlanilha() {
-            if (!usuarioLogado) {
-                console.log('⚠️ Usuário não logado');
-                return;
-            }
-            
-            // Se não tem aulas carregadas, tenta enviar mesmo assim com dados básicos
-            const totalAulas = todasAulas.length > 0 ? todasAulas.length : 25; // Fallback
-            const aulasConcluidasCount = aulasConcluidas.length;
-            
-            const dadosProgresso = {
-                tipo: 'usuarios',
-                codigo: usuarioLogado.codigo,
-                'aulas concluídas': aulasConcluidasCount,
-                'aulas disponíveis': totalAulas,
-                'ultimo acesso': getDataHoraRondonia()
-            };
-            
-            console.log('📤 Enviando progresso:', dadosProgresso);
-            
-            fetch(API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(dadosProgresso)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Erro HTTP: ' + response.status);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.status === "ok") {
-                    mostrarStatusSalvamento('✓ Salvo', 'var(--success)');
-                    console.log('✅ Progresso salvo na planilha!');
-                } else {
-                    mostrarStatusSalvamento('❌ Erro', 'var(--danger)');
-                    console.error('❌ Erro da API:', data.mensagem);
-                }
-            })
-            .catch(err => {
-                mostrarStatusSalvamento('⚠️ Offline', 'var(--warning)');
-                console.error('❌ Erro de conexão:', err);
-            });
-        }
-
-        function mostrarStatusSalvamento(mensagem, cor) {
-            const status = document.getElementById('status-salvamento');
-            status.textContent = mensagem;
-            status.style.color = cor;
-            
-            if (mensagem === '✓ Salvo') {
-                setTimeout(() => {
-                    status.textContent = '✓';
-                    status.style.color = 'var(--success)';
-                }, 2000);
-            }
-        }
-
-        function iniciarSalvamentoAutomatico() {
-            // Salva progresso a cada 2 minutos
-            setInterval(() => {
-                if (usuarioLogado && todasAulas.length > 0) {
-                    enviarProgressoParaPlanilha();
-                }
-            }, 120000);
-        }
 
         function fazerLogin() {
             const codigo = document.getElementById('input-codigo').value.trim();
@@ -958,12 +862,14 @@
             document.getElementById('btn-login').style.display = 'none';
             document.getElementById('login-loading').style.display = 'block';
             
+            // Faz login usando a API com validação completa
             const urlLogin = `${API_URL}?codigo=${codigo}&senha=${senha}`;
             
             fetch(urlLogin)
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === "ok") {
+                        // Login bem-sucedido
                         usuarioLogado = data.usuario;
                         arquivosAcesso = data.arquivosAcesso || [];
                         entrarNaPlataforma();
@@ -972,6 +878,8 @@
                     }
                 })
                 .catch(err => {
+                    console.error('Erro ao fazer login:', err);
+                    // Fallback: validação local (código + 1125)
                     const senhaEsperada = (parseInt(codigo) + 1125).toString();
                     if (senha === senhaEsperada) {
                         usuarioLogado = { 
@@ -1006,32 +914,98 @@
             carregarAulas();
             document.getElementById('buscar-aula').addEventListener('input', filtrarAulas);
             
-            // ✅ CORREÇÃO: Envia progresso IMEDIATAMENTE após login
-            // Tenta enviar a cada 2 segundos até conseguir
-            let tentativas = 0;
-            const intervaloLogin = setInterval(() => {
-                tentativas++;
-                
-                if (todasAulas.length > 0) {
-                    console.log('✅ Aulas carregadas, enviando progresso...');
-                    enviarProgressoParaPlanilha();
-                    clearInterval(intervaloLogin);
-                } else if (tentativas >= 10) { // Máximo 20 segundos
-                    console.log('⚠️ Timeout - enviando mesmo sem aulas carregadas');
-                    enviarProgressoParaPlanilha();
-                    clearInterval(intervaloLogin);
-                } else {
-                    console.log('⏳ Aguardando carregamento das aulas...', tentativas);
-                }
-            }, 2000);
-            
-            // ✅ ENVIO EXTRA após 10 segundos (backup)
+            // ✅ ENVIA PROGRESSO PARA API APÓS 10 SEGUNDOS
             setTimeout(() => {
-                if (todasAulas.length > 0) {
-                    console.log('🔄 Envio de backup após 10 segundos');
-                    enviarProgressoParaPlanilha();
-                }
+                enviarProgressoParaAPI();
             }, 10000);
+            
+            // ✅ CARREGA PROGRESSO DA API
+            carregarProgressoDaAPI();
+            
+            // ✅ INICIA SALVAMENTO AUTOMÁTICO
+            iniciarAutoSave();
+        }
+
+        // ✅ FUNÇÃO PARA ENVIAR PROGRESSO PARA API
+        function enviarProgressoParaAPI() {
+            if (!usuarioLogado || !usuarioLogado.codigo) {
+                console.log('Usuário não logado, não é possível enviar progresso');
+                return;
+            }
+            
+            // Prepara os dados para enviar
+            const dadosParaEnviar = {
+                acao: 'atualizarProgresso',
+                codigo: usuarioLogado.codigo,
+                aulasConcluidas: aulasConcluidas.length.toString(),
+                aulasDisponiveis: todasAulas.length.toString()
+            };
+            
+            console.log('📤 Enviando progresso para API:', dadosParaEnviar);
+            
+            // Envia via POST para a API
+            fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(dadosParaEnviar)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "ok") {
+                    console.log('✅ Progresso salvo na planilha com sucesso!', data.mensagem);
+                } else {
+                    console.error('❌ Erro ao salvar progresso:', data.mensagem);
+                }
+            })
+            .catch(err => {
+                console.error('❌ Erro de conexão ao enviar progresso:', err);
+            });
+        }
+
+        // ✅ FUNÇÃO PARA CARREGAR PROGRESSO DA API
+        function carregarProgressoDaAPI() {
+            if (!usuarioLogado || !usuarioLogado.codigo) return;
+            
+            const urlProgresso = `${API_URL}?acao=buscarProgresso&codigo=${usuarioLogado.codigo}`;
+            
+            fetch(urlProgresso)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "ok" && data.progresso) {
+                        console.log('📥 Progresso carregado da API:', data.progresso);
+                        
+                        const aulasConcluidasAPI = parseInt(data.progresso.aulasConcluidas) || 0;
+                        
+                        // Se tiver mais aulas concluídas na planilha, sincroniza
+                        if (aulasConcluidasAPI > aulasConcluidas.length) {
+                            console.log('🔄 Sincronizando com dados da planilha...');
+                            // Aqui você pode implementar lógica mais complexa de sincronização
+                        }
+                        
+                        atualizarEstatisticas();
+                    }
+                })
+                .catch(err => {
+                    console.log('ℹ️ Não foi possível carregar progresso da API, usando dados locais');
+                });
+        }
+
+        // ✅ FUNÇÕES DE AUTO-SAVE
+        function iniciarAutoSave() {
+            intervaloAutoSave = setInterval(() => {
+                if (usuarioLogado) {
+                    console.log('💾 Salvamento automático do progresso...');
+                    enviarProgressoParaAPI();
+                }
+            }, 120000); // 2 minutos
+        }
+
+        function pararAutoSave() {
+            if (intervaloAutoSave) {
+                clearInterval(intervaloAutoSave);
+            }
         }
 
         function abrirAcessos() {
@@ -1097,7 +1071,11 @@
 
         function fazerLogout() {
             if (confirm('Deseja realmente sair?')) {
-                enviarProgressoParaPlanilha();
+                // ✅ PARA O AUTO-SAVE
+                pararAutoSave();
+                
+                // ✅ ENVIA PROGRESSO ANTES DE SAIR
+                enviarProgressoParaAPI();
                 
                 usuarioLogado = null;
                 arquivosAcesso = [];
@@ -1121,6 +1099,8 @@
             fetch(API_AULAS)
                 .then(response => response.json())
                 .then(data => {
+                    console.log('Dados recebidos da API:', data);
+                    
                     if (data.dados && data.dados.length > 0) {
                         processarDadosGoogleSheets(data.dados);
                         atualizarEstatisticas();
@@ -1130,6 +1110,7 @@
                     }
                 })
                 .catch(err => {
+                    console.error('Erro ao carregar aulas:', err);
                     document.getElementById('lista-categorias').innerHTML = 
                         '<div class="loading">Erro ao carregar aulas. Verifique a conexão.</div>';
                 });
@@ -1145,11 +1126,13 @@
                 const url = item.url || "";
                 let tipo = item.tipo || "video";
                 
+                // Normaliza o tipo para aceitar "video", "vídeo", "pdf", "Pdf"
                 tipo = tipo.toLowerCase();
                 if (tipo.includes('vídeo')) {
                     tipo = 'video';
                 }
                 
+                // Filtra apenas vídeos e PDFs com URL válida do Google Drive
                 if (url && url.includes('drive.google.com') && (tipo === 'video' || tipo === 'pdf')) {
                     if (!aulasPorCategoria[categoria]) {
                         aulasPorCategoria[categoria] = [];
@@ -1171,6 +1154,7 @@
         }
 
         function converterUrlParaEmbed(url) {
+            // Converte URL normal do Google Drive para URL de embed
             if (url.includes('/file/d/')) {
                 const videoId = url.split('/file/d/')[1].split('/')[0];
                 return `https://drive.google.com/file/d/${videoId}/preview`;
@@ -1255,6 +1239,7 @@
             const aulasContainer = document.getElementById(`aulas-${categoria.replace(/\s+/g, '-')}`);
             const estaAberta = categoriaElement.classList.contains('aberta');
             
+            // Fecha todas as outras categorias
             document.querySelectorAll('.categoria-header.aberta').forEach(header => {
                 if (header !== categoriaElement) {
                     header.classList.remove('aberta');
@@ -1265,6 +1250,7 @@
                 }
             });
             
+            // Alterna a categoria atual
             if (estaAberta) {
                 categoriaElement.classList.remove('aberta');
                 aulasContainer.style.display = 'none';
@@ -1365,8 +1351,8 @@
                 btnConcluir.style.background = '#27ae60';
                 btnConcluir.disabled = true;
                 
-                enviarProgressoParaPlanilha();
-                atualizarEstatisticas();
+                // ✅ ENVIA PROGRESSO PARA API IMEDIATAMENTE QUANDO CONCLUI UMA AULA
+                enviarProgressoParaAPI();
                 
                 setTimeout(() => {
                     fecharModal();
@@ -1423,15 +1409,6 @@
             document.getElementById('total-aulas').textContent = totalAulas;
             document.getElementById('aulas-concluidas').textContent = concluidas;
             document.getElementById('aulas-assistindo').textContent = assistindo;
-            
-            if (usuarioLogado) {
-                document.getElementById('user-name').textContent = usuarioLogado.apelido;
-                document.getElementById('user-avatar').textContent = usuarioLogado.apelido.charAt(0);
-            }
-            
-            if (usuarioLogado && totalAulas > 0) {
-                enviarProgressoParaPlanilha();
-            }
         }
 
         function filtrarAulas() {
@@ -1465,21 +1442,6 @@
             const segs = segundos % 60;
             return `${minutos}:${segs.toString().padStart(2, '0')}`;
         }
-
-        // Salva progresso quando o usuário sai da página
-        window.addEventListener('beforeunload', function() {
-            if (usuarioLogado && todasAulas.length > 0) {
-                const dados = {
-                    tipo: 'usuarios',
-                    codigo: usuarioLogado.codigo,
-                    'aulas concluídas': aulasConcluidas.length,
-                    'aulas disponíveis': todasAulas.length,
-                    'ultimo acesso': getDataHoraRondonia()
-                };
-                
-                navigator.sendBeacon(API_URL, JSON.stringify(dados));
-            }
-        });
 
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
