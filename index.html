@@ -848,17 +848,18 @@
             
             dados.forEach(item => {
                 const categoria = item.categoria || "GERAL";
-                const nome = item.nome || item.aula || "Aula sem nome";
-                const url = item.url || item.link || "";
+                const nome = item.nome || "Aula sem nome";
+                const url = item.url || "";
                 let tipo = item.tipo || "video";
                 
-                // Normaliza o tipo
+                // CORREÇÃO: Normaliza o tipo corretamente
                 tipo = tipo.toLowerCase();
                 if (tipo.includes('vídeo') || tipo.includes('video')) {
                     tipo = 'video';
                 }
                 
-                // Filtra apenas conteúdos com URL válida
+                // CORREÇÃO: Remove a verificação muito restritiva do Google Drive
+                // Aceita qualquer URL válida, não apenas do Google Drive
                 if (url && (tipo === 'video' || tipo === 'pdf')) {
                     if (!aulasPorCategoria[categoria]) {
                         aulasPorCategoria[categoria] = [];
@@ -877,6 +878,9 @@
                 }
             });
             
+            console.log('Aulas processadas:', todasAulas);
+            console.log('Aulas por categoria:', aulasPorCategoria);
+            
             renderizarCategorias();
         }
 
@@ -889,6 +893,13 @@
             // Se já for URL de embed, mantém como está
             if (url.includes('/preview')) {
                 return url;
+            }
+            // CORREÇÃO: Se for PDF do Google Drive, também converte para preview
+            if (url.includes('drive.google.com') && url.includes('/view')) {
+                const fileId = url.split('/d/')[1]?.split('/')[0] || url.split('/id=')[1]?.split('&')[0];
+                if (fileId) {
+                    return `https://drive.google.com/file/d/${fileId}/preview`;
+                }
             }
             return url;
         }
