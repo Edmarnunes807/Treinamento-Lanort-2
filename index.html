@@ -198,18 +198,6 @@
         width: 100%;
     }
     
-    .debug-btn {
-        background: #9b59b6;
-        color: white;
-        border: none;
-        padding: 8px 15px;
-        border-radius: 5px;
-        cursor: pointer;
-        margin-top: 10px;
-        font-size: 0.9rem;
-        width: 100%;
-    }
-    
     .progress-section {
         margin: 20px 0;
     }
@@ -743,9 +731,6 @@
                     <button class="acessos-btn" onclick="abrirAcessos()">
                         📁 Meus Acessos
                     </button>
-                    <button class="debug-btn" onclick="debugAPI()">
-                        🐛 Debug API
-                    </button>
                     <button class="logout-btn" onclick="fazerLogout()">Sair</button>
                 </div>
                 
@@ -830,9 +815,9 @@
     </div>
 
     <script>
-        // ✅ URLs das APIs - SUA API ATUAL
-        const API_URL = "https://script.google.com/macros/s/AKfycbxQ5N88sVk74kWc9I7_ruSEQ-Ijmv0ZPY3zIl4hlr5BppljOBihYQeJgB2xKSOPgKKGIQ/exec";
-        const API_AULAS = "https://script.google.com/macros/s/AKfycbxQ5N88sVk74kWc9I7_ruSEQ-Ijmv0ZPY3zIl4hlr5BppljOBihYQeJgB2xKSOPgKKGIQ/exec";
+        // URLs das APIs
+        const API_URL = "https://script.google.com/macros/s/AKfycbwPidVZQh_XmMtUYwj5fx3A2qfVBvn6u2F2YehKlrmyHzoCajXMRMFWZEl2loxixndB/exec";
+        const API_AULAS = "https://script.google.com/macros/s/AKfycbwPidVZQh_XmMtUYwj5fx3A2qfVBvn6u2F2YehKlrmyHzoCajXMRMFWZEl2loxixndB/exec";
         
         let usuarioLogado = null;
         let todasAulas = [];
@@ -844,7 +829,6 @@
         let progressoAulas = {};
         let aulasConcluidas = [];
         let usuariosMap = {};
-        let intervaloAutoSave;
 
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('input-senha').addEventListener('keypress', function(e) {
@@ -877,23 +861,11 @@
             document.getElementById('btn-login').style.display = 'none';
             document.getElementById('login-loading').style.display = 'block';
             
-            // ✅ SOLUÇÃO CORS - Usa método GET com parâmetros na URL
-            const params = new URLSearchParams({
-                codigo: codigo,
-                senha: senha
-            });
-            
-            const urlLogin = `${API_URL}?${params.toString()}`;
-            
-            console.log('🔐 Tentando login via:', urlLogin);
+            // Faz login usando a API com validação completa
+            const urlLogin = `${API_URL}?codigo=${codigo}&senha=${senha}`;
             
             fetch(urlLogin)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Erro na rede');
-                    }
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
                     if (data.status === "ok") {
                         // Login bem-sucedido
@@ -940,199 +912,6 @@
             
             carregarAulas();
             document.getElementById('buscar-aula').addEventListener('input', filtrarAulas);
-            
-            // ✅ ENVIA PROGRESSO PARA API APÓS 10 SEGUNDOS
-            setTimeout(() => {
-                enviarProgressoParaAPI();
-            }, 10000);
-            
-            // ✅ CARREGA PROGRESSO DA API
-            carregarProgressoDaAPI();
-            
-            // ✅ INICIA SALVAMENTO AUTOMÁTICO
-            iniciarAutoSave();
-        }
-
-        // ✅ FUNÇÃO PARA ENVIAR PROGRESSO PARA API (SOLUÇÃO CORS)
-        function enviarProgressoParaAPI() {
-            if (!usuarioLogado || !usuarioLogado.codigo) {
-                console.log('Usuário não logado, não é possível enviar progresso');
-                return;
-            }
-            
-            // Prepara os dados para enviar
-            const dadosParaEnviar = {
-                acao: 'atualizarProgresso',
-                codigo: usuarioLogado.codigo,
-                aulasConcluidas: aulasConcluidas.length.toString(),
-                aulasDisponiveis: todasAulas.length.toString()
-            };
-            
-            console.log('📤 Enviando progresso para API:', dadosParaEnviar);
-            
-            // ✅ SOLUÇÃO CORS - Usa GET com parâmetros na URL
-            const params = new URLSearchParams(dadosParaEnviar);
-            const urlComParametros = `${API_URL}?${params.toString()}`;
-            
-            fetch(urlComParametros)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Erro na rede');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.status === "ok") {
-                        console.log('✅ Progresso salvo na planilha com sucesso!', data.mensagem);
-                        console.log('📊 Detalhes:', data.detalhes);
-                        console.log('📍 Índices:', data.indices);
-                    } else {
-                        console.error('❌ Erro ao salvar progresso:', data.mensagem);
-                    }
-                })
-                .catch(err => {
-                    console.error('❌ Erro de conexão ao enviar progresso:', err);
-                    // Tenta método alternativo
-                    enviarProgressoAlternativo(dadosParaEnviar);
-                });
-        }
-
-        // ✅ MÉTODO ALTERNATIVO PARA ENVIAR PROGRESSO
-        function enviarProgressoAlternativo(dados) {
-            console.log('🔄 Tentando método alternativo...');
-            
-            // Cria um formulário e submete (bypass CORS)
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = API_URL;
-            form.target = 'hiddenFrame';
-            form.style.display = 'none';
-            
-            for (const key in dados) {
-                const input = document.createElement('input');
-                input.name = key;
-                input.value = dados[key];
-                form.appendChild(input);
-            }
-            
-            // Cria um iframe invisível
-            let iframe = document.getElementById('hiddenFrame');
-            if (!iframe) {
-                iframe = document.createElement('iframe');
-                iframe.name = 'hiddenFrame';
-                iframe.style.display = 'none';
-                document.body.appendChild(iframe);
-            }
-            
-            document.body.appendChild(form);
-            form.submit();
-            document.body.removeChild(form);
-            
-            console.log('✅ Método alternativo executado');
-        }
-
-        // ✅ FUNÇÃO PARA CARREGAR PROGRESSO DA API
-        function carregarProgressoDaAPI() {
-            if (!usuarioLogado || !usuarioLogado.codigo) return;
-            
-            const urlProgresso = `${API_URL}?acao=buscarProgresso&codigo=${usuarioLogado.codigo}`;
-            
-            fetch(urlProgresso)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Erro na rede');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.status === "ok" && data.progresso) {
-                        console.log('📥 Progresso carregado da API:', data.progresso);
-                        
-                        const aulasConcluidasAPI = parseInt(data.progresso.aulasConcluidas) || 0;
-                        
-                        // Se tiver mais aulas concluídas na planilha, sincroniza
-                        if (aulasConcluidasAPI > aulasConcluidas.length) {
-                            console.log('🔄 Sincronizando com dados da planilha...');
-                            // Aqui você pode implementar lógica mais complexa de sincronização
-                        }
-                        
-                        atualizarEstatisticas();
-                    }
-                })
-                .catch(err => {
-                    console.log('ℹ️ Não foi possível carregar progresso da API, usando dados locais');
-                });
-        }
-
-        // ✅ FUNÇÃO DEBUG PARA VERIFICAR A API
-        function debugAPI() {
-            if (!usuarioLogado) return;
-            
-            console.log('=== 🐛 INICIANDO DEBUG DA API ===');
-            console.log('👤 Usuário logado:', usuarioLogado);
-            console.log('📚 Aulas concluídas locais:', aulasConcluidas.length);
-            console.log('🎯 Total de aulas:', todasAulas.length);
-            
-            // Testa buscar progresso
-            const urlProgresso = `${API_URL}?acao=buscarProgresso&codigo=${usuarioLogado.codigo}`;
-            console.log('🔍 URL de busca:', urlProgresso);
-            
-            fetch(urlProgresso)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Erro na rede');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('📥 Resposta da API (buscar):', data);
-                })
-                .catch(err => {
-                    console.error('❌ Erro no debug (buscar):', err);
-                });
-            
-            // Testa enviar progresso
-            const dadosTeste = {
-                acao: 'atualizarProgresso',
-                codigo: usuarioLogado.codigo,
-                aulasConcluidas: aulasConcluidas.length.toString(),
-                aulasDisponiveis: todasAulas.length.toString()
-            };
-            
-            console.log('📤 Dados para enviar:', dadosTeste);
-            
-            const params = new URLSearchParams(dadosTeste);
-            const urlEnvio = `${API_URL}?${params.toString()}`;
-            
-            fetch(urlEnvio)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Erro na rede');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('📨 Resposta da API (enviar):', data);
-                })
-                .catch(err => {
-                    console.error('❌ Erro no debug (enviar):', err);
-                });
-        }
-
-        // ✅ FUNÇÕES DE AUTO-SAVE
-        function iniciarAutoSave() {
-            intervaloAutoSave = setInterval(() => {
-                if (usuarioLogado) {
-                    console.log('💾 Salvamento automático do progresso...');
-                    enviarProgressoParaAPI();
-                }
-            }, 120000); // 2 minutos
-        }
-
-        function pararAutoSave() {
-            if (intervaloAutoSave) {
-                clearInterval(intervaloAutoSave);
-            }
         }
 
         function abrirAcessos() {
@@ -1198,12 +977,6 @@
 
         function fazerLogout() {
             if (confirm('Deseja realmente sair?')) {
-                // ✅ PARA O AUTO-SAVE
-                pararAutoSave();
-                
-                // ✅ ENVIA PROGRESSO ANTES DE SAIR
-                enviarProgressoParaAPI();
-                
                 usuarioLogado = null;
                 arquivosAcesso = [];
                 document.getElementById('platform-container').style.display = 'none';
@@ -1224,12 +997,7 @@
 
         function carregarAulas() {
             fetch(API_AULAS)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Erro na rede');
-                    }
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
                     console.log('Dados recebidos da API:', data);
                     
@@ -1482,9 +1250,6 @@
                 btnConcluir.textContent = '✅ Concluída!';
                 btnConcluir.style.background = '#27ae60';
                 btnConcluir.disabled = true;
-                
-                // ✅ ENVIA PROGRESSO PARA API IMEDIATAMENTE QUANDO CONCLUI UMA AULA
-                enviarProgressoParaAPI();
                 
                 setTimeout(() => {
                     fecharModal();
