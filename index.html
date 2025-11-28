@@ -477,14 +477,6 @@
         display: block;
     }
     
-    .modal-controls {
-        padding: 20px;
-        background: var(--light);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
     /* Modal de Acessos */
     .modal-acessos {
         display: none;
@@ -625,6 +617,12 @@
         background: #dfe6e9;
     }
     
+    .status-salvamento {
+        font-size: 0.7em;
+        margin-left: 5px;
+        transition: all 0.3s ease;
+    }
+    
     @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
@@ -743,7 +741,7 @@
                 </div>
                 
                 <div class="stats">
-                    <h4>Estatísticas</h4>
+                    <h4>Estatísticas <span class="status-salvamento" id="status-salvamento" style="color: var(--success);">✓</span></h4>
                     <div class="stat-item">
                         <strong id="total-aulas">0</strong> aulas disponíveis
                     </div>
@@ -842,7 +840,80 @@
                     fazerLogin();
                 }
             });
+            
+            // Inicia o salvamento automático
+            iniciarSalvamentoAutomatico();
         });
+
+        // Função para enviar progresso para a planilha
+        function enviarProgressoParaPlanilha() {
+            if (!usuarioLogado) return;
+            
+            const aulasEmAndamento = Object.values(progressoAulas).filter(p => 
+                p.percentual > 5 && p.percentual < 95
+            ).length;
+            
+            const progressoPercentual = todasAulas.length > 0 ? 
+                Math.round((aulasConcluidas.length / todasAulas.length) * 100) : 0;
+            
+            const dadosProgresso = {
+                tipo: 'usuarios',
+                codigo: usuarioLogado.codigo,
+                apelido: usuarioLogado.apelido,
+                'aulas concluídas': aulasConcluidas.length,
+                'aulas disponíveis': todasAulas.length,
+                'aulas em andamento': aulasEmAndamento,
+                'ultimo acesso': new Date().toLocaleDateString('pt-BR'),
+                'progresso percentual': progressoPercentual
+            };
+            
+            console.log('📤 Enviando dados para planilha:', dadosProgresso);
+            
+            // Usa a função doPost da sua API
+            fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(dadosProgresso)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "ok") {
+                    mostrarStatusSalvamento('✓ Salvo', 'var(--success)');
+                    console.log('✅ Progresso salvo na planilha!');
+                } else {
+                    mostrarStatusSalvamento('❌ Erro', 'var(--danger)');
+                    console.error('❌ Erro ao salvar progresso:', data.mensagem);
+                }
+            })
+            .catch(err => {
+                mostrarStatusSalvamento('⚠️ Offline', 'var(--warning)');
+                console.error('❌ Erro de conexão:', err);
+            });
+        }
+
+        function mostrarStatusSalvamento(mensagem, cor) {
+            const status = document.getElementById('status-salvamento');
+            status.textContent = mensagem;
+            status.style.color = cor;
+            
+            if (mensagem === '✓ Salvo') {
+                setTimeout(() => {
+                    status.textContent = '✓';
+                    status.style.color = 'var(--success)';
+                }, 2000);
+            }
+        }
+
+        function iniciarSalvamentoAutomatico() {
+            // Salva progresso a cada 2 minutos
+            setInterval(() => {
+                if (usuarioLogado && todasAulas.length > 0) {
+                    enviarProgressoParaPlanilha();
+                }
+            }, 120000);
+        }
 
         function fazerLogin() {
             const codigo = document.getElementById('input-codigo').value.trim();
@@ -912,6 +983,11 @@
             
             carregarAulas();
             document.getElementById('buscar-aula').addEventListener('input', filtrarAulas);
+            
+            // Salva progresso inicial
+            setTimeout(() => {
+                enviarProgressoParaPlanilha();
+            }, 1000);
         }
 
         function abrirAcessos() {
@@ -977,6 +1053,9 @@
 
         function fazerLogout() {
             if (confirm('Deseja realmente sair?')) {
+                // Salva progresso antes de sair
+                enviarProgressoParaPlanilha();
+                
                 usuarioLogado = null;
                 arquivosAcesso = [];
                 document.getElementById('platform-container').style.display = 'none';
@@ -1251,6 +1330,10 @@
                 btnConcluir.style.background = '#27ae60';
                 btnConcluir.disabled = true;
                 
+                // ✅ SALVA NA PLANILHA QUANDO CONCLUI UMA AULA
+                enviarProgressoParaPlanilha();
+                atualizarEstatisticas();
+                
                 setTimeout(() => {
                     fecharModal();
                 }, 1500);
@@ -1306,6 +1389,17 @@
             document.getElementById('total-aulas').textContent = totalAulas;
             document.getElementById('aulas-concluidas').textContent = concluidas;
             document.getElementById('aulas-assistindo').textContent = assistindo;
+            
+            // ✅ ATUALIZA OS DADOS VISUAIS DO USUÁRIO
+            if (usuarioLogado) {
+                document.getElementById('user-name').textContent = usuarioLogado.apelido;
+                document.getElementById('user-avatar').textContent = usuarioLogado.apelido.charAt(0);
+            }
+            
+            // ✅ SALVA NA PLANILHA SEMPRE QUE ATUALIZA ESTATÍSTICAS
+            if (usuarioLogado && totalAulas > 0) {
+                enviarProgressoParaPlanilha();
+            }
         }
 
         function filtrarAulas() {
@@ -1339,6 +1433,32 @@
             const segs = segundos % 60;
             return `${minutos}:${segs.toString().padStart(2, '0')}`;
         }
+
+        // Salva progresso quando o usuário sai da página
+        window.addEventListener('beforeunload', function() {
+            if (usuarioLogado && todasAulas.length > 0) {
+                // Tenta enviar os dados antes de sair
+                const aulasEmAndamento = Object.values(progressoAulas).filter(p => 
+                    p.percentual > 5 && p.percentual < 95
+                ).length;
+                
+                const progressoPercentual = Math.round((aulasConcluidas.length / todasAulas.length) * 100);
+                
+                const dados = {
+                    tipo: 'usuarios',
+                    codigo: usuarioLogado.codigo,
+                    apelido: usuarioLogado.apelido,
+                    'aulas concluídas': aulasConcluidas.length,
+                    'aulas disponíveis': todasAulas.length,
+                    'aulas em andamento': aulasEmAndamento,
+                    'ultimo acesso': new Date().toLocaleDateString('pt-BR'),
+                    'progresso percentual': progressoPercentual
+                };
+                
+                // Usa navigator.sendBeacon para garantir o envio
+                navigator.sendBeacon(API_URL, JSON.stringify(dados));
+            }
+        });
 
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
