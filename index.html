@@ -477,6 +477,14 @@
         display: block;
     }
     
+    .modal-controls {
+        padding: 20px;
+        background: var(--light);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
     /* Modal de Acessos */
     .modal-acessos {
         display: none;
@@ -826,7 +834,6 @@
         
         let progressoAulas = {};
         let aulasConcluidas = [];
-        let usuariosMap = {};
 
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('input-senha').addEventListener('keypress', function(e) {
@@ -850,7 +857,6 @@
             const agora = new Date();
             
             // Ajusta para fuso horário de Rondônia (UTC-4)
-            // Subtrai 4 horas do UTC
             const dataRondonia = new Date(agora.getTime() - (4 * 60 * 60 * 1000));
             
             // Formata para DD/MM/AAAA HH:MM:SS
@@ -864,13 +870,12 @@
             return `${dia}/${mes}/${ano} ${horas}:${minutos}:${segundos}`;
         }
 
-        // Função para enviar progresso para a planilha - VERSÃO CORRIGIDA
+        // Função para enviar progresso para a planilha
         function enviarProgressoParaPlanilha() {
             if (!usuarioLogado) return;
             
             // Garante que todasAulas está carregado antes de enviar
             if (todasAulas.length === 0) {
-                console.log('⚠️ Aguardando carregamento das aulas...');
                 setTimeout(enviarProgressoParaPlanilha, 1000);
                 return;
             }
@@ -883,9 +888,6 @@
                 'ultimo acesso': getDataHoraRondonia()
             };
             
-            console.log('📤 Enviando dados COMPLETOS para planilha:', dadosProgresso);
-            
-            // Usa a função doPost da sua API
             fetch(API_URL, {
                 method: 'POST',
                 headers: {
@@ -897,15 +899,12 @@
             .then(data => {
                 if (data.status === "ok") {
                     mostrarStatusSalvamento('✓ Salvo', 'var(--success)');
-                    console.log('✅ Progresso salvo na planilha!');
                 } else {
                     mostrarStatusSalvamento('❌ Erro', 'var(--danger)');
-                    console.error('❌ Erro ao salvar progresso:', data.mensagem);
                 }
             })
             .catch(err => {
                 mostrarStatusSalvamento('⚠️ Offline', 'var(--warning)');
-                console.error('❌ Erro de conexão:', err);
             });
         }
 
@@ -948,14 +947,12 @@
             document.getElementById('btn-login').style.display = 'none';
             document.getElementById('login-loading').style.display = 'block';
             
-            // Faz login usando a API com validação completa
             const urlLogin = `${API_URL}?codigo=${codigo}&senha=${senha}`;
             
             fetch(urlLogin)
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === "ok") {
-                        // Login bem-sucedido
                         usuarioLogado = data.usuario;
                         arquivosAcesso = data.arquivosAcesso || [];
                         entrarNaPlataforma();
@@ -964,8 +961,6 @@
                     }
                 })
                 .catch(err => {
-                    console.error('Erro ao fazer login:', err);
-                    // Fallback: validação local (código + 1125)
                     const senhaEsperada = (parseInt(codigo) + 1125).toString();
                     if (senha === senhaEsperada) {
                         usuarioLogado = { 
@@ -1000,12 +995,11 @@
             carregarAulas();
             document.getElementById('buscar-aula').addEventListener('input', filtrarAulas);
             
-            // Salva progresso inicial (aguarda carregamento das aulas)
+            // Salva progresso inicial
             setTimeout(() => {
                 if (todasAulas.length > 0) {
                     enviarProgressoParaPlanilha();
                 } else {
-                    // Tenta novamente após 2 segundos se as aulas não carregaram
                     setTimeout(() => {
                         if (todasAulas.length > 0) {
                             enviarProgressoParaPlanilha();
@@ -1078,7 +1072,6 @@
 
         function fazerLogout() {
             if (confirm('Deseja realmente sair?')) {
-                // Salva progresso antes de sair
                 enviarProgressoParaPlanilha();
                 
                 usuarioLogado = null;
@@ -1103,8 +1096,6 @@
             fetch(API_AULAS)
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Dados recebidos da API:', data);
-                    
                     if (data.dados && data.dados.length > 0) {
                         processarDadosGoogleSheets(data.dados);
                         atualizarEstatisticas();
@@ -1114,7 +1105,6 @@
                     }
                 })
                 .catch(err => {
-                    console.error('Erro ao carregar aulas:', err);
                     document.getElementById('lista-categorias').innerHTML = 
                         '<div class="loading">Erro ao carregar aulas. Verifique a conexão.</div>';
                 });
@@ -1130,13 +1120,11 @@
                 const url = item.url || "";
                 let tipo = item.tipo || "video";
                 
-                // Normaliza o tipo para aceitar "video", "vídeo", "pdf", "Pdf"
                 tipo = tipo.toLowerCase();
                 if (tipo.includes('vídeo')) {
                     tipo = 'video';
                 }
                 
-                // Filtra apenas vídeos e PDFs com URL válida do Google Drive
                 if (url && url.includes('drive.google.com') && (tipo === 'video' || tipo === 'pdf')) {
                     if (!aulasPorCategoria[categoria]) {
                         aulasPorCategoria[categoria] = [];
@@ -1158,7 +1146,6 @@
         }
 
         function converterUrlParaEmbed(url) {
-            // Converte URL normal do Google Drive para URL de embed
             if (url.includes('/file/d/')) {
                 const videoId = url.split('/file/d/')[1].split('/')[0];
                 return `https://drive.google.com/file/d/${videoId}/preview`;
@@ -1243,7 +1230,6 @@
             const aulasContainer = document.getElementById(`aulas-${categoria.replace(/\s+/g, '-')}`);
             const estaAberta = categoriaElement.classList.contains('aberta');
             
-            // Fecha todas as outras categorias
             document.querySelectorAll('.categoria-header.aberta').forEach(header => {
                 if (header !== categoriaElement) {
                     header.classList.remove('aberta');
@@ -1254,7 +1240,6 @@
                 }
             });
             
-            // Alterna a categoria atual
             if (estaAberta) {
                 categoriaElement.classList.remove('aberta');
                 aulasContainer.style.display = 'none';
@@ -1355,7 +1340,6 @@
                 btnConcluir.style.background = '#27ae60';
                 btnConcluir.disabled = true;
                 
-                // ✅ SALVA NA PLANILHA QUANDO CONCLUI UMA AULA
                 enviarProgressoParaPlanilha();
                 atualizarEstatisticas();
                 
@@ -1415,13 +1399,11 @@
             document.getElementById('aulas-concluidas').textContent = concluidas;
             document.getElementById('aulas-assistindo').textContent = assistindo;
             
-            // ✅ ATUALIZA OS DADOS VISUAIS DO USUÁRIO
             if (usuarioLogado) {
                 document.getElementById('user-name').textContent = usuarioLogado.apelido;
                 document.getElementById('user-avatar').textContent = usuarioLogado.apelido.charAt(0);
             }
             
-            // ✅ SALVA NA PLANILHA SEMPRE QUE ATUALIZA ESTATÍSTICAS
             if (usuarioLogado && totalAulas > 0) {
                 enviarProgressoParaPlanilha();
             }
@@ -1462,7 +1444,6 @@
         // Salva progresso quando o usuário sai da página
         window.addEventListener('beforeunload', function() {
             if (usuarioLogado && todasAulas.length > 0) {
-                // Tenta enviar os dados antes de sair
                 const dados = {
                     tipo: 'usuarios',
                     codigo: usuarioLogado.codigo,
@@ -1471,7 +1452,6 @@
                     'ultimo acesso': getDataHoraRondonia()
                 };
                 
-                // Usa navigator.sendBeacon para garantir o envio
                 navigator.sendBeacon(API_URL, JSON.stringify(dados));
             }
         });
