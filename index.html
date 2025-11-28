@@ -642,8 +642,8 @@
     </div>
 
     <script>
-        // URLs das APIs
-        const API_USUARIOS = "https://script.google.com/macros/s/AKfycbzaAF6RoDCbg3x5gAcRq-wm9uUcsh77NDKo4ORAa_HiL5vlhxsqzCdFeI7uUTx3qeDFQQ/exec";
+        // URLs das APIs - ATUALIZADA COM SUA NOVA API
+        const API_USUARIOS = "https://script.google.com/macros/s/AKfycbxKNNRBkK20d-rYA1QrRRknzBEk700ot5xGcyucYewQzmWtSMT0pMuQCn3x0SbpdLowHg/exec";
         const API_AULAS = "https://script.google.com/macros/s/AKfycbzHoYUJ8INDFlmvd_BFkAh0SUCCBDEhs_nRIvb84VUgmzH9Q0X_S_Bgdmyc85CdVJrDqQ/exec";
         
         let usuarioLogado = null;
@@ -737,29 +737,14 @@
             document.getElementById('btn-login').style.display = 'none';
             document.getElementById('login-loading').style.display = 'block';
             
-            // Tenta fazer login na API
+            // Tenta fazer login na API - CORRIGIDO
             fetch(API_USUARIOS + `?codigo=${codigo}&senha=${senha}`)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.status === "ok") {
-                        // VERIFICA SE O USUÁRIO NÃO TEM ACESSO AO TREINAMENTO
-                        if (data.usuario.acessoTreinamento === "nao") {
-                            mostrarErro('Usuário não tem acesso à plataforma de treinamento');
-                            document.getElementById('btn-login').style.display = 'block';
-                            document.getElementById('login-loading').style.display = 'none';
-                            return;
-                        }
-                        
-                        usuarioLogado = {
-                            codigo: data.usuario.codigo,
-                            apelido: data.usuario.apelido,
-                            aulasConcluidas: data.usuario.aulasConcluidas || "0",
-                            aulasDisponiveis: data.usuario.aulasDisponiveis || "0",
-                            ultimoAcesso: data.usuario.ultimoAcesso || "-",
-                            acessoTreinamento: data.usuario.acessoTreinamento === "sim",
-                            arquivosAcesso: data.arquivosAcesso || []
-                        };
-                        
+                    console.log('Resposta do login:', data);
+                    
+                    if (data.success) {
+                        usuarioLogado = data.usuario;
                         entrarNaPlataforma();
                     } else {
                         // Fallback: senha = código + 1125
@@ -773,11 +758,12 @@
                             };
                             entrarNaPlataforma();
                         } else {
-                            mostrarErro(data.mensagem || 'Senha incorreta');
+                            mostrarErro(data.erro || 'Senha incorreta');
                         }
                     }
                 })
                 .catch(err => {
+                    console.error('Erro no login:', err);
                     // Fallback: senha = código + 1125
                     const senhaEsperada = (parseInt(codigo) + 1125).toString();
                     if (senha === senhaEsperada) {
