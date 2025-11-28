@@ -352,7 +352,7 @@
         color: white;
     }
     
-    .aula-info {
+    .aula.info {
         flex: 1;
     }
     
@@ -667,14 +667,17 @@
         });
 
         function carregarUsuarios() {
+            // Tenta carregar usuários da API
             fetch(API_USUARIOS + '?action=usuarios')
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
                         popularSelectUsuarios(data.usuarios);
                     } else {
-                        // Fallback para usuários de demonstração
+                        // Fallback para usuários de demonstração (mantido do código anterior)
                         const usuariosDemo = [
+                            { codigo: "81", apelido: "EDMAR.NUNES" },
+                            { codigo: "140", apelido: "VIRLEI BASSO" },
                             { codigo: "1", apelido: "João Silva" },
                             { codigo: "2", apelido: "Maria Santos" },
                             { codigo: "3", apelido: "Pedro Oliveira" },
@@ -685,8 +688,10 @@
                 })
                 .catch(err => {
                     console.error('Erro ao carregar usuários:', err);
-                    // Fallback para usuários de demonstração
+                    // Fallback para usuários de demonstração (mantido do código anterior)
                     const usuariosDemo = [
+                        { codigo: "81", apelido: "EDMAR.NUNES" },
+                        { codigo: "140", apelido: "VIRLEI BASSO" },
                         { codigo: "1", apelido: "João Silva" },
                         { codigo: "2", apelido: "Maria Santos" },
                         { codigo: "3", apelido: "Pedro Oliveira" },
@@ -737,17 +742,30 @@
             document.getElementById('btn-login').style.display = 'none';
             document.getElementById('login-loading').style.display = 'block';
             
-            // Tenta fazer login na API - CORRIGIDO
+            // Tenta fazer login na API - CORRIGIDO para nova API
             fetch(API_USUARIOS + `?codigo=${codigo}&senha=${senha}`)
                 .then(response => response.json())
                 .then(data => {
                     console.log('Resposta do login:', data);
                     
                     if (data.success) {
+                        // Login bem-sucedido com a nova API
+                        usuarioLogado = {
+                            codigo: data.usuario.codigo,
+                            apelido: data.usuario.apelido,
+                            aulasConcluidas: data.usuario.aulasConcluidas || "0",
+                            aulasDisponiveis: data.usuario.aulasDisponiveis || "0",
+                            ultimoAcesso: data.usuario.ultimoAcesso || "-",
+                            acessoTreinamento: data.usuario.acessoTreinamento === "sim",
+                            arquivosAcesso: data.arquivosAcesso || []
+                        };
+                        entrarNaPlataforma();
+                    } else if (data.status === "ok") {
+                        // Fallback para API antiga (mantido para compatibilidade)
                         usuarioLogado = data.usuario;
                         entrarNaPlataforma();
                     } else {
-                        // Fallback: senha = código + 1125
+                        // Fallback: senha = código + 1125 (mantido do código anterior)
                         const senhaEsperada = (parseInt(codigo) + 1125).toString();
                         if (senha === senhaEsperada) {
                             // Para fallback, assume que tem acesso
@@ -758,13 +776,13 @@
                             };
                             entrarNaPlataforma();
                         } else {
-                            mostrarErro(data.erro || 'Senha incorreta');
+                            mostrarErro(data.erro || data.mensagem || 'Senha incorreta');
                         }
                     }
                 })
                 .catch(err => {
                     console.error('Erro no login:', err);
-                    // Fallback: senha = código + 1125
+                    // Fallback: senha = código + 1125 (mantido do código anterior)
                     const senhaEsperada = (parseInt(codigo) + 1125).toString();
                     if (senha === senhaEsperada) {
                         // Para fallback, assume que tem acesso
