@@ -738,28 +738,58 @@
             document.getElementById('login-loading').style.display = 'block';
             
             // Tenta fazer login na API
-            fetch(API_USUARIOS + `?action=login&codigo=${codigo}&senha=${senha}`)
+            fetch(API_USUARIOS + `?codigo=${codigo}&senha=${senha}`)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success) {
-                        usuarioLogado = data.usuario;
+                    console.log('Resposta do login:', data);
+                    
+                    if (data.status === "ok") {
+                        // VERIFICA SE O USUÁRIO TEM ACESSO AO TREINAMENTO
+                        if (data.usuario.acessoTreinamento !== "sim") {
+                            mostrarErro('Usuário não tem acesso à plataforma de treinamento');
+                            document.getElementById('btn-login').style.display = 'block';
+                            document.getElementById('login-loading').style.display = 'none';
+                            return;
+                        }
+                        
+                        usuarioLogado = {
+                            codigo: data.usuario.codigo,
+                            apelido: data.usuario.apelido,
+                            aulasConcluidas: data.usuario.aulasConcluidas || "0",
+                            aulasDisponiveis: data.usuario.aulasDisponiveis || "0",
+                            ultimoAcesso: data.usuario.ultimoAcesso || "-",
+                            acessoTreinamento: data.usuario.acessoTreinamento === "sim",
+                            arquivosAcesso: data.arquivosAcesso || []
+                        };
+                        
                         entrarNaPlataforma();
                     } else {
                         // Fallback: senha = código + 1125
                         const senhaEsperada = (parseInt(codigo) + 1125).toString();
                         if (senha === senhaEsperada) {
-                            usuarioLogado = { codigo: codigo, apelido: nomeUsuario };
+                            // Para fallback, assume que tem acesso
+                            usuarioLogado = { 
+                                codigo: codigo, 
+                                apelido: nomeUsuario,
+                                acessoTreinamento: true
+                            };
                             entrarNaPlataforma();
                         } else {
-                            mostrarErro(data.erro || 'Senha incorreta');
+                            mostrarErro(data.mensagem || 'Senha incorreta');
                         }
                     }
                 })
                 .catch(err => {
+                    console.error('Erro no login:', err);
                     // Fallback: senha = código + 1125
                     const senhaEsperada = (parseInt(codigo) + 1125).toString();
                     if (senha === senhaEsperada) {
-                        usuarioLogado = { codigo: codigo, apelido: nomeUsuario };
+                        // Para fallback, assume que tem acesso
+                        usuarioLogado = { 
+                            codigo: codigo, 
+                            apelido: nomeUsuario,
+                            acessoTreinamento: true
+                        };
                         entrarNaPlataforma();
                     } else {
                         mostrarErro('Erro de conexão. Tente novamente.');
@@ -850,10 +880,16 @@
                 const categoria = item.categoria || item[""] || "GERAL";
                 const nome = item.nome || "Aula sem nome";
                 const url = item.url || "";
-                const tipo = item.tipo || "video";
+                let tipo = item.tipo || "video";
                 
-                // Filtra apenas vídeos com URL válida do Google Drive
-                if (url && url.includes('drive.google.com') && tipo === 'video') {
+                // Normaliza o tipo para aceitar "video", "vídeo", "pdf", "Pdf"
+                tipo = tipo.toLowerCase();
+                if (tipo.includes('vídeo')) {
+                    tipo = 'video';
+                }
+                
+                // Filtra apenas vídeos e PDFs com URL válida do Google Drive
+                if (url && url.includes('drive.google.com') && (tipo === 'video' || tipo === 'pdf')) {
                     if (!aulasPorCategoria[categoria]) {
                         aulasPorCategoria[categoria] = [];
                     }
