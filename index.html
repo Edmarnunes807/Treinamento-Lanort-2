@@ -642,7 +642,7 @@
     </div>
 
     <script>
-        // NOVA API
+        // API ORIGINAL QUE FUNCIONA
         const API_URL = "https://script.google.com/macros/s/AKfycbzsVFKHm28GY_M2QmDOdLS6JzCFmQ-dcb7gAZg4-IkmZ0AoAJ3aGPvOXa5xnrfW5wxiHA/exec";
         
         let usuarioLogado = null;
@@ -663,12 +663,6 @@
                     fazerLogin();
                 }
             });
-            
-            document.getElementById('select-usuario').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    fazerLogin();
-                }
-            });
         });
 
         function carregarUsuarios() {
@@ -680,20 +674,24 @@
                     if (data.status === "ok" && data.dados && data.dados.length > 0) {
                         popularSelectUsuarios(data.dados);
                     } else {
-                        // Fallback: carrega alguns usuários de exemplo
+                        // Fallback para usuários de demonstração
                         const usuariosDemo = [
-                            { codigo: "81", apelido: "EDMAR.NUNES" },
-                            { codigo: "140", apelido: "VIRLEI BASSO" }
+                            { codigo: "1", apelido: "João Silva" },
+                            { codigo: "2", apelido: "Maria Santos" },
+                            { codigo: "3", apelido: "Pedro Oliveira" },
+                            { codigo: "4", apelido: "Ana Costa" }
                         ];
                         popularSelectUsuarios(usuariosDemo);
                     }
                 })
                 .catch(err => {
                     console.error('Erro ao carregar usuários:', err);
-                    // Fallback em caso de erro
+                    // Fallback para usuários de demonstração
                     const usuariosDemo = [
-                        { codigo: "81", apelido: "EDMAR.NUNES" },
-                        { codigo: "140", apelido: "VIRLEI BASSO" }
+                        { codigo: "1", apelido: "João Silva" },
+                        { codigo: "2", apelido: "Maria Santos" },
+                        { codigo: "3", apelido: "Pedro Oliveira" },
+                        { codigo: "4", apelido: "Ana Costa" }
                     ];
                     popularSelectUsuarios(usuariosDemo);
                 });
@@ -706,13 +704,11 @@
             usuariosMap = {};
             
             usuarios.forEach(usuario => {
-                // Usa apelido como chave e guarda o código
-                const apelido = usuario.apelido || `Usuário ${usuario.codigo}`;
-                usuariosMap[apelido] = usuario.codigo;
+                usuariosMap[usuario.apelido] = usuario.codigo;
                 
                 const option = document.createElement('option');
-                option.value = apelido;
-                option.textContent = apelido;
+                option.value = usuario.apelido;
+                option.textContent = usuario.apelido;
                 option.setAttribute('data-codigo', usuario.codigo);
                 select.appendChild(option);
             });
@@ -742,7 +738,7 @@
             document.getElementById('btn-login').style.display = 'none';
             document.getElementById('login-loading').style.display = 'block';
             
-            // Faz login na NOVA API
+            // Tenta fazer login na API
             fetch(API_URL + `?codigo=${codigo}&senha=${senha}`)
                 .then(response => response.json())
                 .then(data => {
@@ -750,15 +746,28 @@
                     
                     if (data.status === "ok") {
                         usuarioLogado = data.usuario;
-                        usuarioLogado.apelido = nomeUsuario; // Mantém o nome selecionado
+                        usuarioLogado.apelido = nomeUsuario;
                         entrarNaPlataforma();
                     } else {
-                        mostrarErro(data.mensagem || 'Erro no login');
+                        // Fallback: senha = código + 1125
+                        const senhaEsperada = (parseInt(codigo) + 1125).toString();
+                        if (senha === senhaEsperada) {
+                            usuarioLogado = { codigo: codigo, apelido: nomeUsuario };
+                            entrarNaPlataforma();
+                        } else {
+                            mostrarErro(data.mensagem || 'Senha incorreta');
+                        }
                     }
                 })
                 .catch(err => {
-                    console.error('Erro ao fazer login:', err);
-                    mostrarErro('Erro de conexão. Tente novamente.');
+                    // Fallback: senha = código + 1125
+                    const senhaEsperada = (parseInt(codigo) + 1125).toString();
+                    if (senha === senhaEsperada) {
+                        usuarioLogado = { codigo: codigo, apelido: nomeUsuario };
+                        entrarNaPlataforma();
+                    } else {
+                        mostrarErro('Erro de conexão. Tente novamente.');
+                    }
                 })
                 .finally(() => {
                     document.getElementById('btn-login').style.display = 'block';
@@ -770,7 +779,7 @@
             carregarDadosUsuario();
             
             document.getElementById('user-name').textContent = usuarioLogado.apelido;
-            document.getElementById('user-avatar').textContent = usuarioLogado.apelido.charAt(0).toUpperCase();
+            document.getElementById('user-avatar').textContent = usuarioLogado.apelido.charAt(0);
             
             document.getElementById('login-container').style.display = 'none';
             document.getElementById('platform-container').style.display = 'block';
@@ -780,26 +789,22 @@
         }
 
         function carregarDadosUsuario() {
-            if (usuarioLogado && usuarioLogado.codigo) {
-                const dados = localStorage.getItem(`progresso_${usuarioLogado.codigo}`);
-                if (dados) {
-                    const parsed = JSON.parse(dados);
-                    progressoAulas = parsed.progressoAulas || {};
-                    aulasConcluidas = parsed.aulasConcluidas || [];
-                    categoriasAbertas = parsed.categoriasAbertas || {};
-                }
+            const dados = localStorage.getItem(`progresso_${usuarioLogado.codigo}`);
+            if (dados) {
+                const parsed = JSON.parse(dados);
+                progressoAulas = parsed.progressoAulas || {};
+                aulasConcluidas = parsed.aulasConcluidas || [];
+                categoriasAbertas = parsed.categoriasAbertas || {};
             }
         }
 
         function salvarDadosUsuario() {
-            if (usuarioLogado && usuarioLogado.codigo) {
-                const dados = {
-                    progressoAulas: progressoAulas,
-                    aulasConcluidas: aulasConcluidas,
-                    categoriasAbertas: categoriasAbertas
-                };
-                localStorage.setItem(`progresso_${usuarioLogado.codigo}`, JSON.stringify(dados));
-            }
+            const dados = {
+                progressoAulas: progressoAulas,
+                aulasConcluidas: aulasConcluidas,
+                categoriasAbertas: categoriasAbertas
+            };
+            localStorage.setItem(`progresso_${usuarioLogado.codigo}`, JSON.stringify(dados));
         }
 
         function fazerLogout() {
@@ -808,7 +813,6 @@
                 document.getElementById('platform-container').style.display = 'none';
                 document.getElementById('login-container').style.display = 'block';
                 document.getElementById('input-senha').value = '';
-                document.getElementById('select-usuario').selectedIndex = 0;
             }
         }
 
@@ -825,7 +829,7 @@
             fetch(API_URL + '?tipo=aulas')
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Dados das aulas:', data);
+                    console.log('Dados recebidos da API:', data);
                     
                     if (data.status === "ok" && data.dados && data.dados.length > 0) {
                         processarDadosAulas(data.dados);
@@ -852,15 +856,8 @@
                 const url = item.url || "";
                 let tipo = item.tipo || "video";
                 
-                // CORREÇÃO: Normaliza o tipo corretamente
-                tipo = tipo.toLowerCase();
-                if (tipo.includes('vídeo') || tipo.includes('video')) {
-                    tipo = 'video';
-                }
-                
-                // CORREÇÃO: Remove a verificação muito restritiva do Google Drive
-                // Aceita qualquer URL válida, não apenas do Google Drive
-                if (url && (tipo === 'video' || tipo === 'pdf')) {
+                // CORREÇÃO: Aceita qualquer tipo de conteúdo com URL válida
+                if (url) {
                     if (!aulasPorCategoria[categoria]) {
                         aulasPorCategoria[categoria] = [];
                     }
@@ -870,7 +867,7 @@
                         url: converterUrlParaEmbed(url),
                         categoria: categoria,
                         tipo: tipo,
-                        duracao: item.duracao || item.tempo || ""
+                        duracao: item.duracao || ""
                     };
                     
                     todasAulas.push(aula);
@@ -878,8 +875,8 @@
                 }
             });
             
-            console.log('Aulas processadas:', todasAulas);
-            console.log('Aulas por categoria:', aulasPorCategoria);
+            console.log('Total de aulas processadas:', todasAulas.length);
+            console.log('Categorias:', Object.keys(aulasPorCategoria));
             
             renderizarCategorias();
         }
@@ -893,13 +890,6 @@
             // Se já for URL de embed, mantém como está
             if (url.includes('/preview')) {
                 return url;
-            }
-            // CORREÇÃO: Se for PDF do Google Drive, também converte para preview
-            if (url.includes('drive.google.com') && url.includes('/view')) {
-                const fileId = url.split('/d/')[1]?.split('/')[0] || url.split('/id=')[1]?.split('&')[0];
-                if (fileId) {
-                    return `https://drive.google.com/file/d/${fileId}/preview`;
-                }
             }
             return url;
         }
@@ -958,7 +948,6 @@
                                     </div>
                                     <div class="aula-info">
                                         <div class="aula-nome">${aula.nome}</div>
-                                        ${aula.duracao ? `<div style="font-size: 0.8rem; color: #7f8c8d;">${aula.duracao}</div>` : ''}
                                         ${percentual > 0 ? `
                                             <div class="aula-progresso">
                                                 <div class="aula-progresso-interno" style="width: ${percentual}%"></div>
