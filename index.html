@@ -198,6 +198,18 @@
         width: 100%;
     }
     
+    .debug-btn {
+        background: #9b59b6;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 10px;
+        font-size: 0.9rem;
+        width: 100%;
+    }
+    
     .progress-section {
         margin: 20px 0;
     }
@@ -731,6 +743,9 @@
                     <button class="acessos-btn" onclick="abrirAcessos()">
                         📁 Meus Acessos
                     </button>
+                    <button class="debug-btn" onclick="debugAPI()">
+                        🐛 Debug API
+                    </button>
                     <button class="logout-btn" onclick="fazerLogout()">Sair</button>
                 </div>
                 
@@ -816,8 +831,8 @@
 
     <script>
         // URLs das APIs
-        const API_URL = "https://script.google.com/macros/s/AKfycby47xe8yifKs-YmH3PUjLHYkmcb_FpnqDrrwS7XJuyX58Fcgk2KNiLIDU5V6Ozycevo/exec";
-        const API_AULAS = "https://script.google.com/macros/s/AKfycby47xe8yifKs-YmH3PUjLHYkmcb_FpnqDrrwS7XJuyX58Fcgk2KNiLIDU5V6Ozycevo/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbwGeRncN54wfDmi7_b09vLFceIC6WPG0P3KZj-0uAEXTAtNDSQ05DFqq9i8OX9_kjtulw/exec";
+        const API_AULAS = "https://script.google.com/macros/s/AKfycbwGeRncN54wfDmi7_b09vLFceIC6WPG0P3KZj-0uAEXTAtNDSQ05DFqq9i8OX9_kjtulw/exec";
         
         let usuarioLogado = null;
         let todasAulas = [];
@@ -955,6 +970,8 @@
             .then(data => {
                 if (data.status === "ok") {
                     console.log('✅ Progresso salvo na planilha com sucesso!', data.mensagem);
+                    console.log('📊 Detalhes:', data.detalhes);
+                    console.log('📍 Índices:', data.indices);
                 } else {
                     console.error('❌ Erro ao salvar progresso:', data.mensagem);
                 }
@@ -990,6 +1007,52 @@
                 .catch(err => {
                     console.log('ℹ️ Não foi possível carregar progresso da API, usando dados locais');
                 });
+        }
+
+        // ✅ FUNÇÃO DEBUG PARA VERIFICAR A API
+        function debugAPI() {
+            if (!usuarioLogado) return;
+            
+            console.log('=== 🐛 INICIANDO DEBUG DA API ===');
+            console.log('👤 Usuário logado:', usuarioLogado);
+            console.log('📚 Aulas concluídas locais:', aulasConcluidas.length);
+            console.log('🎯 Total de aulas:', todasAulas.length);
+            
+            // Testa buscar progresso
+            const urlProgresso = `${API_URL}?acao=buscarProgresso&codigo=${usuarioLogado.codigo}`;
+            console.log('🔍 URL de busca:', urlProgresso);
+            
+            fetch(urlProgresso)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('📥 Resposta da API (buscar):', data);
+                })
+                .catch(err => {
+                    console.error('❌ Erro no debug (buscar):', err);
+                });
+            
+            // Testa enviar progresso
+            const dadosTeste = {
+                acao: 'atualizarProgresso',
+                codigo: usuarioLogado.codigo,
+                aulasConcluidas: aulasConcluidas.length.toString(),
+                aulasDisponiveis: todasAulas.length.toString()
+            };
+            
+            console.log('📤 Dados para enviar:', dadosTeste);
+            
+            fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dadosTeste)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('📨 Resposta da API (enviar):', data);
+            })
+            .catch(err => {
+                console.error('❌ Erro no debug (enviar):', err);
+            });
         }
 
         // ✅ FUNÇÕES DE AUTO-SAVE
