@@ -738,7 +738,7 @@
             document.getElementById('btn-login').style.display = 'none';
             document.getElementById('login-loading').style.display = 'block';
             
-            // Tenta fazer login na API
+            // Tenta fazer login na API - MANTENDO A FUNÇÃO ORIGINAL
             fetch(API_URL + `?codigo=${codigo}&senha=${senha}`)
                 .then(response => response.json())
                 .then(data => {
@@ -746,28 +746,15 @@
                     
                     if (data.status === "ok") {
                         usuarioLogado = data.usuario;
-                        usuarioLogado.apelido = nomeUsuario; // Mantém o nome selecionado
+                        usuarioLogado.apelido = nomeUsuario;
                         entrarNaPlataforma();
                     } else {
-                        // Fallback: senha = código + 1125
-                        const senhaEsperada = (parseInt(codigo) + 1125).toString();
-                        if (senha === senhaEsperada) {
-                            usuarioLogado = { codigo: codigo, apelido: nomeUsuario };
-                            entrarNaPlataforma();
-                        } else {
-                            mostrarErro(data.mensagem || 'Senha incorreta');
-                        }
+                        mostrarErro(data.mensagem || 'Senha incorreta');
                     }
                 })
                 .catch(err => {
-                    // Fallback: senha = código + 1125
-                    const senhaEsperada = (parseInt(codigo) + 1125).toString();
-                    if (senha === senhaEsperada) {
-                        usuarioLogado = { codigo: codigo, apelido: nomeUsuario };
-                        entrarNaPlataforma();
-                    } else {
-                        mostrarErro('Erro de conexão. Tente novamente.');
-                    }
+                    console.error('Erro ao fazer login:', err);
+                    mostrarErro('Erro de conexão. Tente novamente.');
                 })
                 .finally(() => {
                     document.getElementById('btn-login').style.display = 'block';
@@ -964,6 +951,7 @@
             container.innerHTML = html;
         }
 
+        // ... (mantenha todas as outras funções EXATAMENTE como estavam no código original)
         function toggleCategoria(categoria) {
             const categoriaElement = document.querySelector(`[onclick="toggleCategoria('${categoria}')"]`);
             const aulasContainer = document.getElementById(`aulas-${categoria.replace(/\s+/g, '-')}`);
