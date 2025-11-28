@@ -741,11 +741,9 @@
             fetch(API_USUARIOS + `?codigo=${codigo}&senha=${senha}`)
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Resposta do login:', data);
-                    
                     if (data.status === "ok") {
-                        // VERIFICA SE O USUÁRIO TEM ACESSO AO TREINAMENTO
-                        if (data.usuario.acessoTreinamento !== "sim") {
+                        // VERIFICA SE O USUÁRIO NÃO TEM ACESSO AO TREINAMENTO
+                        if (data.usuario.acessoTreinamento === "nao") {
                             mostrarErro('Usuário não tem acesso à plataforma de treinamento');
                             document.getElementById('btn-login').style.display = 'block';
                             document.getElementById('login-loading').style.display = 'none';
@@ -780,7 +778,6 @@
                     }
                 })
                 .catch(err => {
-                    console.error('Erro no login:', err);
                     // Fallback: senha = código + 1125
                     const senhaEsperada = (parseInt(codigo) + 1125).toString();
                     if (senha === senhaEsperada) {
