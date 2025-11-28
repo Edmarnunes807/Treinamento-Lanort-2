@@ -542,8 +542,10 @@
         <div class="error-message" id="error-message"></div>
         
         <div class="form-group">
-            <label class="form-label">Código do usuário:</label>
-            <input type="text" class="form-input" id="input-codigo" placeholder="Digite seu código">
+            <label class="form-label">Selecione seu usuário:</label>
+            <select class="form-select" id="select-usuario">
+                <option value="">Carregando usuários...</option>
+            </select>
         </div>
         
         <div class="form-group">
@@ -651,32 +653,89 @@
         
         let progressoAulas = {};
         let aulasConcluidas = [];
+        let usuariosMap = {};
 
         document.addEventListener('DOMContentLoaded', function() {
+            carregarUsuarios();
+            
             document.getElementById('input-senha').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     fazerLogin();
                 }
             });
             
-            document.getElementById('input-codigo').addEventListener('keypress', function(e) {
+            document.getElementById('select-usuario').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     fazerLogin();
                 }
             });
         });
 
+        function carregarUsuarios() {
+            fetch(API_URL + '?tipo=usuarios')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Dados dos usuários:', data);
+                    
+                    if (data.status === "ok" && data.dados && data.dados.length > 0) {
+                        popularSelectUsuarios(data.dados);
+                    } else {
+                        // Fallback: carrega alguns usuários de exemplo
+                        const usuariosDemo = [
+                            { codigo: "81", apelido: "EDMAR.NUNES" },
+                            { codigo: "140", apelido: "VIRLEI BASSO" }
+                        ];
+                        popularSelectUsuarios(usuariosDemo);
+                    }
+                })
+                .catch(err => {
+                    console.error('Erro ao carregar usuários:', err);
+                    // Fallback em caso de erro
+                    const usuariosDemo = [
+                        { codigo: "81", apelido: "EDMAR.NUNES" },
+                        { codigo: "140", apelido: "VIRLEI BASSO" }
+                    ];
+                    popularSelectUsuarios(usuariosDemo);
+                });
+        }
+
+        function popularSelectUsuarios(usuarios) {
+            const select = document.getElementById('select-usuario');
+            select.innerHTML = '<option value="">Selecione seu usuário</option>';
+            
+            usuariosMap = {};
+            
+            usuarios.forEach(usuario => {
+                // Usa apelido como chave e guarda o código
+                const apelido = usuario.apelido || `Usuário ${usuario.codigo}`;
+                usuariosMap[apelido] = usuario.codigo;
+                
+                const option = document.createElement('option');
+                option.value = apelido;
+                option.textContent = apelido;
+                option.setAttribute('data-codigo', usuario.codigo);
+                select.appendChild(option);
+            });
+        }
+
         function fazerLogin() {
-            const codigo = document.getElementById('input-codigo').value;
+            const nomeUsuario = document.getElementById('select-usuario').value;
             const senha = document.getElementById('input-senha').value;
             
-            if (!codigo) {
-                mostrarErro('Digite seu código de usuário');
+            if (!nomeUsuario) {
+                mostrarErro('Selecione um usuário');
                 return;
             }
             
             if (!senha) {
                 mostrarErro('Digite a senha');
+                return;
+            }
+            
+            const codigo = usuariosMap[nomeUsuario];
+            
+            if (!codigo) {
+                mostrarErro('Usuário não encontrado');
                 return;
             }
             
@@ -687,10 +746,11 @@
             fetch(API_URL + `?codigo=${codigo}&senha=${senha}`)
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Resposta da API:', data);
+                    console.log('Resposta do login:', data);
                     
                     if (data.status === "ok") {
                         usuarioLogado = data.usuario;
+                        usuarioLogado.apelido = nomeUsuario; // Mantém o nome selecionado
                         entrarNaPlataforma();
                     } else {
                         mostrarErro(data.mensagem || 'Erro no login');
@@ -709,8 +769,8 @@
         function entrarNaPlataforma() {
             carregarDadosUsuario();
             
-            document.getElementById('user-name').textContent = usuarioLogado.apelido || `Usuário ${usuarioLogado.codigo}`;
-            document.getElementById('user-avatar').textContent = (usuarioLogado.apelido || 'U').charAt(0).toUpperCase();
+            document.getElementById('user-name').textContent = usuarioLogado.apelido;
+            document.getElementById('user-avatar').textContent = usuarioLogado.apelido.charAt(0).toUpperCase();
             
             document.getElementById('login-container').style.display = 'none';
             document.getElementById('platform-container').style.display = 'block';
@@ -748,7 +808,7 @@
                 document.getElementById('platform-container').style.display = 'none';
                 document.getElementById('login-container').style.display = 'block';
                 document.getElementById('input-senha').value = '';
-                document.getElementById('input-codigo').value = '';
+                document.getElementById('select-usuario').selectedIndex = 0;
             }
         }
 
