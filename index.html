@@ -642,8 +642,9 @@
     </div>
 
     <script>
-        // URL da sua API original do Google Sheets
-        const API_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbzHoYUJ8INDFlmvd_BFkAh0SUCCBDEhs_nRIvb84VUgmzH9Q0X_S_Bgdmyc85CdVJrDqQ/exec";
+        // URLs das APIs
+        const API_USUARIOS = "https://script.google.com/macros/s/AKfycbzaAF6RoDCbg3x5gAcRq-wm9uUcsh77NDKo4ORAa_HiL5vlhxsqzCdFeI7uUTx3qeDFQQ/exec";
+        const API_AULAS = "https://script.google.com/macros/s/AKfycbzHoYUJ8INDFlmvd_BFkAh0SUCCBDEhs_nRIvb84VUgmzH9Q0X_S_Bgdmyc85CdVJrDqQ/exec";
         
         let usuarioLogado = null;
         let todasAulas = [];
@@ -666,15 +667,33 @@
         });
 
         function carregarUsuarios() {
-            // Usuários fixos para demonstração
-            const usuariosDemo = [
-                { codigo: "1", apelido: "João Silva" },
-                { codigo: "2", apelido: "Maria Santos" },
-                { codigo: "3", apelido: "Pedro Oliveira" },
-                { codigo: "4", apelido: "Ana Costa" }
-            ];
-            
-            popularSelectUsuarios(usuariosDemo);
+            fetch(API_USUARIOS + '?action=usuarios')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        popularSelectUsuarios(data.usuarios);
+                    } else {
+                        // Fallback para usuários de demonstração
+                        const usuariosDemo = [
+                            { codigo: "1", apelido: "João Silva" },
+                            { codigo: "2", apelido: "Maria Santos" },
+                            { codigo: "3", apelido: "Pedro Oliveira" },
+                            { codigo: "4", apelido: "Ana Costa" }
+                        ];
+                        popularSelectUsuarios(usuariosDemo);
+                    }
+                })
+                .catch(err => {
+                    console.error('Erro ao carregar usuários:', err);
+                    // Fallback para usuários de demonstração
+                    const usuariosDemo = [
+                        { codigo: "1", apelido: "João Silva" },
+                        { codigo: "2", apelido: "Maria Santos" },
+                        { codigo: "3", apelido: "Pedro Oliveira" },
+                        { codigo: "4", apelido: "Ana Costa" }
+                    ];
+                    popularSelectUsuarios(usuariosDemo);
+                });
         }
 
         function popularSelectUsuarios(usuarios) {
@@ -718,20 +737,38 @@
             document.getElementById('btn-login').style.display = 'none';
             document.getElementById('login-loading').style.display = 'block';
             
-            // Simulação de login - senha é código + 1125
-            const senhaEsperada = (parseInt(codigo) + 1125).toString();
-            
-            setTimeout(() => {
-                if (senha === senhaEsperada) {
-                    usuarioLogado = { codigo: codigo, apelido: nomeUsuario };
-                    entrarNaPlataforma();
-                } else {
-                    mostrarErro('Senha incorreta');
-                }
-                
-                document.getElementById('btn-login').style.display = 'block';
-                document.getElementById('login-loading').style.display = 'none';
-            }, 1000);
+            // Tenta fazer login na API
+            fetch(API_USUARIOS + `?action=login&codigo=${codigo}&senha=${senha}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        usuarioLogado = data.usuario;
+                        entrarNaPlataforma();
+                    } else {
+                        // Fallback: senha = código + 1125
+                        const senhaEsperada = (parseInt(codigo) + 1125).toString();
+                        if (senha === senhaEsperada) {
+                            usuarioLogado = { codigo: codigo, apelido: nomeUsuario };
+                            entrarNaPlataforma();
+                        } else {
+                            mostrarErro(data.erro || 'Senha incorreta');
+                        }
+                    }
+                })
+                .catch(err => {
+                    // Fallback: senha = código + 1125
+                    const senhaEsperada = (parseInt(codigo) + 1125).toString();
+                    if (senha === senhaEsperada) {
+                        usuarioLogado = { codigo: codigo, apelido: nomeUsuario };
+                        entrarNaPlataforma();
+                    } else {
+                        mostrarErro('Erro de conexão. Tente novamente.');
+                    }
+                })
+                .finally(() => {
+                    document.getElementById('btn-login').style.display = 'block';
+                    document.getElementById('login-loading').style.display = 'none';
+                });
         }
 
         function entrarNaPlataforma() {
@@ -785,26 +822,23 @@
         }
 
         function carregarAulas() {
-            fetch(API_GOOGLE_SHEETS)
+            fetch(API_AULAS)
                 .then(response => response.json())
                 .then(data => {
                     console.log('Dados recebidos da API:', data);
                     
-                    // Processa os dados da sua API do Google Sheets
                     if (data.dados && data.dados.length > 0) {
                         processarDadosGoogleSheets(data.dados);
                         atualizarEstatisticas();
                     } else {
                         document.getElementById('lista-categorias').innerHTML = 
-                            '<div class="loading">Nenhuma aula encontrada</div>';
+                            '<div class="loading">Nenhuma aula encontrada na planilha</div>';
                     }
                 })
                 .catch(err => {
                     console.error('Erro ao carregar aulas:', err);
                     document.getElementById('lista-categorias').innerHTML = 
-                        '<div class="loading">Erro ao carregar aulas. Usando dados de demonstração.</div>';
-                    // Dados de demonstração em caso de erro
-                    usarDadosDemonstracao();
+                        '<div class="loading">Erro ao carregar aulas. Verifique a conexão.</div>';
                 });
         }
 
@@ -813,13 +847,12 @@
             aulasPorCategoria = {};
             
             dados.forEach(item => {
-                // Processa cada item da planilha
                 const categoria = item.categoria || item[""] || "GERAL";
                 const nome = item.nome || "Aula sem nome";
                 const url = item.url || "";
                 const tipo = item.tipo || "video";
                 
-                // Só adiciona se for um vídeo com URL válida
+                // Filtra apenas vídeos com URL válida do Google Drive
                 if (url && url.includes('drive.google.com') && tipo === 'video') {
                     if (!aulasPorCategoria[categoria]) {
                         aulasPorCategoria[categoria] = [];
@@ -841,7 +874,7 @@
         }
 
         function converterUrlParaEmbed(url) {
-            // Converte URL do Google Drive para embed
+            // Converte URL normal do Google Drive para URL de embed
             if (url.includes('/file/d/')) {
                 const videoId = url.split('/file/d/')[1].split('/')[0];
                 return `https://drive.google.com/file/d/${videoId}/preview`;
@@ -849,30 +882,16 @@
             return url;
         }
 
-        function usarDadosDemonstracao() {
-            // Dados de demonstração caso a API não funcione
-            todasAulas = [
-                {
-                    nome: "⚠️ LEIA ANTES DE ACESSAR AS AULAS",
-                    url: "https://drive.google.com/file/d/1inIZ1v0nxhTm6S--7cJFuIQxoyGpuatl/preview",
-                    categoria: "INFORMATIVO",
-                    tipo: "video"
-                }
-            ];
-            
-            aulasPorCategoria = {
-                "INFORMATIVO": todasAulas
-            };
-            
-            renderizarCategorias();
-            atualizarEstatisticas();
-        }
-
         function renderizarCategorias() {
             const container = document.getElementById('lista-categorias');
             
             if (Object.keys(aulasPorCategoria).length === 0) {
-                container.innerHTML = '<div class="loading">Nenhuma aula encontrada</div>';
+                container.innerHTML = `
+                    <div class="loading">
+                        <p>Nenhum vídeo encontrado na planilha.</p>
+                        <p>Verifique se os links são do Google Drive e estão no formato correto.</p>
+                    </div>
+                `;
                 return;
             }
 
@@ -1122,7 +1141,6 @@
                 aula.categoria.toLowerCase().includes(termo)
             );
             
-            // Recria o objeto aulasPorCategoria com as aulas filtradas
             const aulasFiltradasPorCategoria = {};
             aulasFiltradas.forEach(aula => {
                 if (!aulasFiltradasPorCategoria[aula.categoria]) {
