@@ -814,8 +814,8 @@
 
     <script>
         // URLs das APIs
-        const API_URL = "https://script.google.com/macros/s/AKfycbyP4dWt4mAL93lFvW_oiEgKWcRpWY9HKx3JAPqc9CfMcNcfks1EmPOIdP6Zx5EekWAb9A/exec";
-        const API_AULAS = "https://script.google.com/macros/s/AKfycbyP4dWt4mAL93lFvW_oiEgKWcRpWY9HKx3JAPqc9CfMcNcfks1EmPOIdP6Zx5EekWAb9A/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbzBRpLVjzOeRgX78fp9JSFB9057MOJOANwLyHQRUFw_iCKe6ArjO1hVupOMn_lspuIm3g/exec";
+        const API_AULAS = "https://script.google.com/macros/s/AKfycbzBRpLVjzOeRgX78fp9JSFB9057MOJOANwLyHQRUFw_iCKe6ArjO1hVupOMn_lspuIm3g/exec";
         
         let usuarioLogado = null;
         let todasAulas = [];
@@ -845,24 +845,21 @@
             iniciarSalvamentoAutomatico();
         });
 
-        // Função para obter data/hora no fuso de Brasília (-1H)
-        function getDataHoraBrasilia() {
+        // Função para obter data/hora no fuso de Rondônia (UTC-4)
+        function getDataHoraRondonia() {
             const agora = new Date();
-            // Ajusta para fuso horário de Brasília (UTC-3)
-            const offsetBrasilia = -3 * 60; // -3 horas em minutos
-            const offsetLocal = agora.getTimezoneOffset();
-            const diferenca = offsetBrasilia + offsetLocal;
             
-            // Cria nova data ajustada
-            const dataBrasilia = new Date(agora.getTime() + diferenca * 60000);
+            // Ajusta para fuso horário de Rondônia (UTC-4)
+            // Subtrai 4 horas do UTC
+            const dataRondonia = new Date(agora.getTime() - (4 * 60 * 60 * 1000));
             
             // Formata para DD/MM/AAAA HH:MM:SS
-            const dia = dataBrasilia.getDate().toString().padStart(2, '0');
-            const mes = (dataBrasilia.getMonth() + 1).toString().padStart(2, '0');
-            const ano = dataBrasilia.getFullYear();
-            const horas = dataBrasilia.getHours().toString().padStart(2, '0');
-            const minutos = dataBrasilia.getMinutes().toString().padStart(2, '0');
-            const segundos = dataBrasilia.getSeconds().toString().padStart(2, '0');
+            const dia = dataRondonia.getUTCDate().toString().padStart(2, '0');
+            const mes = (dataRondonia.getUTCMonth() + 1).toString().padStart(2, '0');
+            const ano = dataRondonia.getUTCFullYear();
+            const horas = dataRondonia.getUTCHours().toString().padStart(2, '0');
+            const minutos = dataRondonia.getUTCMinutes().toString().padStart(2, '0');
+            const segundos = dataRondonia.getUTCSeconds().toString().padStart(2, '0');
             
             return `${dia}/${mes}/${ano} ${horas}:${minutos}:${segundos}`;
         }
@@ -871,12 +868,19 @@
         function enviarProgressoParaPlanilha() {
             if (!usuarioLogado) return;
             
+            // Garante que todasAulas está carregado antes de enviar
+            if (todasAulas.length === 0) {
+                console.log('⚠️ Aguardando carregamento das aulas...');
+                setTimeout(enviarProgressoParaPlanilha, 1000);
+                return;
+            }
+            
             const dadosProgresso = {
                 tipo: 'usuarios',
                 codigo: usuarioLogado.codigo,
                 'aulas concluídas': aulasConcluidas.length,
                 'aulas disponíveis': todasAulas.length,
-                'ultimo acesso': getDataHoraBrasilia()
+                'ultimo acesso': getDataHoraRondonia()
             };
             
             console.log('📤 Enviando dados COMPLETOS para planilha:', dadosProgresso);
@@ -996,9 +1000,18 @@
             carregarAulas();
             document.getElementById('buscar-aula').addEventListener('input', filtrarAulas);
             
-            // Salva progresso inicial
+            // Salva progresso inicial (aguarda carregamento das aulas)
             setTimeout(() => {
-                enviarProgressoParaPlanilha();
+                if (todasAulas.length > 0) {
+                    enviarProgressoParaPlanilha();
+                } else {
+                    // Tenta novamente após 2 segundos se as aulas não carregaram
+                    setTimeout(() => {
+                        if (todasAulas.length > 0) {
+                            enviarProgressoParaPlanilha();
+                        }
+                    }, 2000);
+                }
             }, 1000);
         }
 
@@ -1455,7 +1468,7 @@
                     codigo: usuarioLogado.codigo,
                     'aulas concluídas': aulasConcluidas.length,
                     'aulas disponíveis': todasAulas.length,
-                    'ultimo acesso': getDataHoraBrasilia()
+                    'ultimo acesso': getDataHoraRondonia()
                 };
                 
                 // Usa navigator.sendBeacon para garantir o envio
