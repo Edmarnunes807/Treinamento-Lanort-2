@@ -830,9 +830,9 @@
     </div>
 
     <script>
-        // URLs das APIs
-        const API_URL = "https://script.google.com/macros/s/AKfycbwGeRncN54wfDmi7_b09vLFceIC6WPG0P3KZj-0uAEXTAtNDSQ05DFqq9i8OX9_kjtulw/exec";
-        const API_AULAS = "https://script.google.com/macros/s/AKfycbwGeRncN54wfDmi7_b09vLFceIC6WPG0P3KZj-0uAEXTAtNDSQ05DFqq9i8OX9_kjtulw/exec";
+        // ✅ URLs das APIs - SUA API ATUAL
+        const API_URL = "https://script.google.com/macros/s/AKfycbxQ5N88sVk74kWc9I7_ruSEQ-Ijmv0ZPY3zIl4hlr5BppljOBihYQeJgB2xKSOPgKKGIQ/exec";
+        const API_AULAS = "https://script.google.com/macros/s/AKfycbxQ5N88sVk74kWc9I7_ruSEQ-Ijmv0ZPY3zIl4hlr5BppljOBihYQeJgB2xKSOPgKKGIQ/exec";
         
         let usuarioLogado = null;
         let todasAulas = [];
@@ -877,11 +877,23 @@
             document.getElementById('btn-login').style.display = 'none';
             document.getElementById('login-loading').style.display = 'block';
             
-            // Faz login usando a API com validação completa
-            const urlLogin = `${API_URL}?codigo=${codigo}&senha=${senha}`;
+            // ✅ SOLUÇÃO CORS - Usa método GET com parâmetros na URL
+            const params = new URLSearchParams({
+                codigo: codigo,
+                senha: senha
+            });
+            
+            const urlLogin = `${API_URL}?${params.toString()}`;
+            
+            console.log('🔐 Tentando login via:', urlLogin);
             
             fetch(urlLogin)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro na rede');
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.status === "ok") {
                         // Login bem-sucedido
@@ -941,7 +953,7 @@
             iniciarAutoSave();
         }
 
-        // ✅ FUNÇÃO PARA ENVIAR PROGRESSO PARA API
+        // ✅ FUNÇÃO PARA ENVIAR PROGRESSO PARA API (SOLUÇÃO CORS)
         function enviarProgressoParaAPI() {
             if (!usuarioLogado || !usuarioLogado.codigo) {
                 console.log('Usuário não logado, não é possível enviar progresso');
@@ -958,27 +970,65 @@
             
             console.log('📤 Enviando progresso para API:', dadosParaEnviar);
             
-            // Envia via POST para a API
-            fetch(API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(dadosParaEnviar)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === "ok") {
-                    console.log('✅ Progresso salvo na planilha com sucesso!', data.mensagem);
-                    console.log('📊 Detalhes:', data.detalhes);
-                    console.log('📍 Índices:', data.indices);
-                } else {
-                    console.error('❌ Erro ao salvar progresso:', data.mensagem);
-                }
-            })
-            .catch(err => {
-                console.error('❌ Erro de conexão ao enviar progresso:', err);
-            });
+            // ✅ SOLUÇÃO CORS - Usa GET com parâmetros na URL
+            const params = new URLSearchParams(dadosParaEnviar);
+            const urlComParametros = `${API_URL}?${params.toString()}`;
+            
+            fetch(urlComParametros)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro na rede');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === "ok") {
+                        console.log('✅ Progresso salvo na planilha com sucesso!', data.mensagem);
+                        console.log('📊 Detalhes:', data.detalhes);
+                        console.log('📍 Índices:', data.indices);
+                    } else {
+                        console.error('❌ Erro ao salvar progresso:', data.mensagem);
+                    }
+                })
+                .catch(err => {
+                    console.error('❌ Erro de conexão ao enviar progresso:', err);
+                    // Tenta método alternativo
+                    enviarProgressoAlternativo(dadosParaEnviar);
+                });
+        }
+
+        // ✅ MÉTODO ALTERNATIVO PARA ENVIAR PROGRESSO
+        function enviarProgressoAlternativo(dados) {
+            console.log('🔄 Tentando método alternativo...');
+            
+            // Cria um formulário e submete (bypass CORS)
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = API_URL;
+            form.target = 'hiddenFrame';
+            form.style.display = 'none';
+            
+            for (const key in dados) {
+                const input = document.createElement('input');
+                input.name = key;
+                input.value = dados[key];
+                form.appendChild(input);
+            }
+            
+            // Cria um iframe invisível
+            let iframe = document.getElementById('hiddenFrame');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.name = 'hiddenFrame';
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+            }
+            
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+            
+            console.log('✅ Método alternativo executado');
         }
 
         // ✅ FUNÇÃO PARA CARREGAR PROGRESSO DA API
@@ -988,7 +1038,12 @@
             const urlProgresso = `${API_URL}?acao=buscarProgresso&codigo=${usuarioLogado.codigo}`;
             
             fetch(urlProgresso)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro na rede');
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.status === "ok" && data.progresso) {
                         console.log('📥 Progresso carregado da API:', data.progresso);
@@ -1023,7 +1078,12 @@
             console.log('🔍 URL de busca:', urlProgresso);
             
             fetch(urlProgresso)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro na rede');
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     console.log('📥 Resposta da API (buscar):', data);
                 })
@@ -1041,18 +1101,22 @@
             
             console.log('📤 Dados para enviar:', dadosTeste);
             
-            fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dadosTeste)
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('📨 Resposta da API (enviar):', data);
-            })
-            .catch(err => {
-                console.error('❌ Erro no debug (enviar):', err);
-            });
+            const params = new URLSearchParams(dadosTeste);
+            const urlEnvio = `${API_URL}?${params.toString()}`;
+            
+            fetch(urlEnvio)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro na rede');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('📨 Resposta da API (enviar):', data);
+                })
+                .catch(err => {
+                    console.error('❌ Erro no debug (enviar):', err);
+                });
         }
 
         // ✅ FUNÇÕES DE AUTO-SAVE
@@ -1160,7 +1224,12 @@
 
         function carregarAulas() {
             fetch(API_AULAS)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro na rede');
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     console.log('Dados recebidos da API:', data);
                     
