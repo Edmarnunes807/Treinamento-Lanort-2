@@ -352,7 +352,7 @@
         color: white;
     }
     
-    .aula.info {
+    .aula-info {
         flex: 1;
     }
     
@@ -542,10 +542,8 @@
         <div class="error-message" id="error-message"></div>
         
         <div class="form-group">
-            <label class="form-label">Selecione seu usuário:</label>
-            <select class="form-select" id="select-usuario">
-                <option value="">Carregando usuários...</option>
-            </select>
+            <label class="form-label">Código do usuário:</label>
+            <input type="text" class="form-input" id="input-codigo" placeholder="Digite seu código">
         </div>
         
         <div class="form-group">
@@ -642,9 +640,8 @@
     </div>
 
     <script>
-        // URLs das APIs - ATUALIZADA COM SUA NOVA API
-        const API_USUARIOS = "https://script.google.com/macros/s/AKfycbxKNNRBkK20d-rYA1QrRRknzBEk700ot5xGcyucYewQzmWtSMT0pMuQCn3x0SbpdLowHg/exec";
-        const API_AULAS = "https://script.google.com/macros/s/AKfycbzHoYUJ8INDFlmvd_BFkAh0SUCCBDEhs_nRIvb84VUgmzH9Q0X_S_Bgdmyc85CdVJrDqQ/exec";
+        // URL da sua nova API
+        const API_URL = "https://script.google.com/macros/s/AKfycbzDdmgadPjmNJQCIDM7FZGWw_HGviZcz1DYLqPz-HkoBmnXQtG1LFjCihEFC-jVp5b83w/exec";
         
         let usuarioLogado = null;
         let todasAulas = [];
@@ -654,76 +651,27 @@
         
         let progressoAulas = {};
         let aulasConcluidas = [];
-        let usuariosMap = {};
 
         document.addEventListener('DOMContentLoaded', function() {
-            carregarUsuarios();
-            
             document.getElementById('input-senha').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    fazerLogin();
+                }
+            });
+            
+            document.getElementById('input-codigo').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     fazerLogin();
                 }
             });
         });
 
-        function carregarUsuarios() {
-            // Tenta carregar usuários da API
-            fetch(API_USUARIOS + '?action=usuarios')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        popularSelectUsuarios(data.usuarios);
-                    } else {
-                        // Fallback para usuários de demonstração (mantido do código anterior)
-                        const usuariosDemo = [
-                            { codigo: "81", apelido: "EDMAR.NUNES" },
-                            { codigo: "140", apelido: "VIRLEI BASSO" },
-                            { codigo: "1", apelido: "João Silva" },
-                            { codigo: "2", apelido: "Maria Santos" },
-                            { codigo: "3", apelido: "Pedro Oliveira" },
-                            { codigo: "4", apelido: "Ana Costa" }
-                        ];
-                        popularSelectUsuarios(usuariosDemo);
-                    }
-                })
-                .catch(err => {
-                    console.error('Erro ao carregar usuários:', err);
-                    // Fallback para usuários de demonstração (mantido do código anterior)
-                    const usuariosDemo = [
-                        { codigo: "81", apelido: "EDMAR.NUNES" },
-                        { codigo: "140", apelido: "VIRLEI BASSO" },
-                        { codigo: "1", apelido: "João Silva" },
-                        { codigo: "2", apelido: "Maria Santos" },
-                        { codigo: "3", apelido: "Pedro Oliveira" },
-                        { codigo: "4", apelido: "Ana Costa" }
-                    ];
-                    popularSelectUsuarios(usuariosDemo);
-                });
-        }
-
-        function popularSelectUsuarios(usuarios) {
-            const select = document.getElementById('select-usuario');
-            select.innerHTML = '<option value="">Selecione seu usuário</option>';
-            
-            usuariosMap = {};
-            
-            usuarios.forEach(usuario => {
-                usuariosMap[usuario.apelido] = usuario.codigo;
-                
-                const option = document.createElement('option');
-                option.value = usuario.apelido;
-                option.textContent = usuario.apelido;
-                option.setAttribute('data-codigo', usuario.codigo);
-                select.appendChild(option);
-            });
-        }
-
         function fazerLogin() {
-            const nomeUsuario = document.getElementById('select-usuario').value;
+            const codigo = document.getElementById('input-codigo').value;
             const senha = document.getElementById('input-senha').value;
             
-            if (!nomeUsuario) {
-                mostrarErro('Selecione um usuário');
+            if (!codigo) {
+                mostrarErro('Digite seu código de usuário');
                 return;
             }
             
@@ -732,69 +680,25 @@
                 return;
             }
             
-            const codigo = usuariosMap[nomeUsuario];
-            
-            if (!codigo) {
-                mostrarErro('Usuário não encontrado');
-                return;
-            }
-            
             document.getElementById('btn-login').style.display = 'none';
             document.getElementById('login-loading').style.display = 'block';
             
-            // Tenta fazer login na API - CORRIGIDO para nova API
-            fetch(API_USUARIOS + `?codigo=${codigo}&senha=${senha}`)
+            // Faz login na API
+            fetch(API_URL + `?codigo=${codigo}&senha=${senha}`)
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Resposta do login:', data);
+                    console.log('Resposta da API:', data);
                     
-                    if (data.success) {
-                        // Login bem-sucedido com a nova API
-                        usuarioLogado = {
-                            codigo: data.usuario.codigo,
-                            apelido: data.usuario.apelido,
-                            aulasConcluidas: data.usuario.aulasConcluidas || "0",
-                            aulasDisponiveis: data.usuario.aulasDisponiveis || "0",
-                            ultimoAcesso: data.usuario.ultimoAcesso || "-",
-                            acessoTreinamento: data.usuario.acessoTreinamento === "sim",
-                            arquivosAcesso: data.arquivosAcesso || []
-                        };
-                        entrarNaPlataforma();
-                    } else if (data.status === "ok") {
-                        // Fallback para API antiga (mantido para compatibilidade)
+                    if (data.status === "ok") {
                         usuarioLogado = data.usuario;
                         entrarNaPlataforma();
                     } else {
-                        // Fallback: senha = código + 1125 (mantido do código anterior)
-                        const senhaEsperada = (parseInt(codigo) + 1125).toString();
-                        if (senha === senhaEsperada) {
-                            // Para fallback, assume que tem acesso
-                            usuarioLogado = { 
-                                codigo: codigo, 
-                                apelido: nomeUsuario,
-                                acessoTreinamento: true
-                            };
-                            entrarNaPlataforma();
-                        } else {
-                            mostrarErro(data.erro || data.mensagem || 'Senha incorreta');
-                        }
+                        mostrarErro(data.mensagem || 'Erro no login');
                     }
                 })
                 .catch(err => {
-                    console.error('Erro no login:', err);
-                    // Fallback: senha = código + 1125 (mantido do código anterior)
-                    const senhaEsperada = (parseInt(codigo) + 1125).toString();
-                    if (senha === senhaEsperada) {
-                        // Para fallback, assume que tem acesso
-                        usuarioLogado = { 
-                            codigo: codigo, 
-                            apelido: nomeUsuario,
-                            acessoTreinamento: true
-                        };
-                        entrarNaPlataforma();
-                    } else {
-                        mostrarErro('Erro de conexão. Tente novamente.');
-                    }
+                    console.error('Erro ao fazer login:', err);
+                    mostrarErro('Erro de conexão. Tente novamente.');
                 })
                 .finally(() => {
                     document.getElementById('btn-login').style.display = 'block';
@@ -805,8 +709,8 @@
         function entrarNaPlataforma() {
             carregarDadosUsuario();
             
-            document.getElementById('user-name').textContent = usuarioLogado.apelido;
-            document.getElementById('user-avatar').textContent = usuarioLogado.apelido.charAt(0);
+            document.getElementById('user-name').textContent = usuarioLogado.apelido || `Usuário ${usuarioLogado.codigo}`;
+            document.getElementById('user-avatar').textContent = (usuarioLogado.apelido || 'U').charAt(0).toUpperCase();
             
             document.getElementById('login-container').style.display = 'none';
             document.getElementById('platform-container').style.display = 'block';
@@ -816,22 +720,26 @@
         }
 
         function carregarDadosUsuario() {
-            const dados = localStorage.getItem(`progresso_${usuarioLogado.codigo}`);
-            if (dados) {
-                const parsed = JSON.parse(dados);
-                progressoAulas = parsed.progressoAulas || {};
-                aulasConcluidas = parsed.aulasConcluidas || [];
-                categoriasAbertas = parsed.categoriasAbertas || {};
+            if (usuarioLogado && usuarioLogado.codigo) {
+                const dados = localStorage.getItem(`progresso_${usuarioLogado.codigo}`);
+                if (dados) {
+                    const parsed = JSON.parse(dados);
+                    progressoAulas = parsed.progressoAulas || {};
+                    aulasConcluidas = parsed.aulasConcluidas || [];
+                    categoriasAbertas = parsed.categoriasAbertas || {};
+                }
             }
         }
 
         function salvarDadosUsuario() {
-            const dados = {
-                progressoAulas: progressoAulas,
-                aulasConcluidas: aulasConcluidas,
-                categoriasAbertas: categoriasAbertas
-            };
-            localStorage.setItem(`progresso_${usuarioLogado.codigo}`, JSON.stringify(dados));
+            if (usuarioLogado && usuarioLogado.codigo) {
+                const dados = {
+                    progressoAulas: progressoAulas,
+                    aulasConcluidas: aulasConcluidas,
+                    categoriasAbertas: categoriasAbertas
+                };
+                localStorage.setItem(`progresso_${usuarioLogado.codigo}`, JSON.stringify(dados));
+            }
         }
 
         function fazerLogout() {
@@ -840,6 +748,7 @@
                 document.getElementById('platform-container').style.display = 'none';
                 document.getElementById('login-container').style.display = 'block';
                 document.getElementById('input-senha').value = '';
+                document.getElementById('input-codigo').value = '';
             }
         }
 
@@ -853,13 +762,13 @@
         }
 
         function carregarAulas() {
-            fetch(API_AULAS)
+            fetch(API_URL + '?tipo=aulas')
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Dados recebidos da API:', data);
+                    console.log('Dados das aulas:', data);
                     
-                    if (data.dados && data.dados.length > 0) {
-                        processarDadosGoogleSheets(data.dados);
+                    if (data.status === "ok" && data.dados && data.dados.length > 0) {
+                        processarDadosAulas(data.dados);
                         atualizarEstatisticas();
                     } else {
                         document.getElementById('lista-categorias').innerHTML = 
@@ -873,24 +782,24 @@
                 });
         }
 
-        function processarDadosGoogleSheets(dados) {
+        function processarDadosAulas(dados) {
             todasAulas = [];
             aulasPorCategoria = {};
             
             dados.forEach(item => {
-                const categoria = item.categoria || item[""] || "GERAL";
-                const nome = item.nome || "Aula sem nome";
-                const url = item.url || "";
+                const categoria = item.categoria || "GERAL";
+                const nome = item.nome || item.aula || "Aula sem nome";
+                const url = item.url || item.link || "";
                 let tipo = item.tipo || "video";
                 
-                // Normaliza o tipo para aceitar "video", "vídeo", "pdf", "Pdf"
+                // Normaliza o tipo
                 tipo = tipo.toLowerCase();
-                if (tipo.includes('vídeo')) {
+                if (tipo.includes('vídeo') || tipo.includes('video')) {
                     tipo = 'video';
                 }
                 
-                // Filtra apenas vídeos e PDFs com URL válida do Google Drive
-                if (url && url.includes('drive.google.com') && (tipo === 'video' || tipo === 'pdf')) {
+                // Filtra apenas conteúdos com URL válida
+                if (url && (tipo === 'video' || tipo === 'pdf')) {
                     if (!aulasPorCategoria[categoria]) {
                         aulasPorCategoria[categoria] = [];
                     }
@@ -899,7 +808,8 @@
                         nome: nome,
                         url: converterUrlParaEmbed(url),
                         categoria: categoria,
-                        tipo: tipo
+                        tipo: tipo,
+                        duracao: item.duracao || item.tempo || ""
                     };
                     
                     todasAulas.push(aula);
@@ -916,6 +826,10 @@
                 const videoId = url.split('/file/d/')[1].split('/')[0];
                 return `https://drive.google.com/file/d/${videoId}/preview`;
             }
+            // Se já for URL de embed, mantém como está
+            if (url.includes('/preview')) {
+                return url;
+            }
             return url;
         }
 
@@ -925,8 +839,8 @@
             if (Object.keys(aulasPorCategoria).length === 0) {
                 container.innerHTML = `
                     <div class="loading">
-                        <p>Nenhum vídeo encontrado na planilha.</p>
-                        <p>Verifique se os links são do Google Drive e estão no formato correto.</p>
+                        <p>Nenhum conteúdo encontrado na planilha.</p>
+                        <p>Verifique se os links estão no formato correto.</p>
                     </div>
                 `;
                 return;
@@ -937,19 +851,20 @@
                 const aulasConcluidasCategoria = aulas.filter(a => aulasConcluidas.includes(a.nome)).length;
                 const progressoCategoria = aulas.length > 0 ? (aulasConcluidasCategoria / aulas.length) * 100 : 0;
                 const categoriaConcluida = progressoCategoria === 100;
-                const categoriaAberta = categoriasAbertas[categoria] && !categoriaConcluida;
+                const categoriaAberta = categoriasAbertas[categoria] !== undefined ? categoriasAbertas[categoria] : true;
 
                 html += `
                     <div class="categoria">
                         <div class="categoria-header ${categoriaAberta ? 'aberta' : ''} ${categoriaConcluida ? 'concluida' : ''}" 
-                             onclick="toggleCategoria('${categoria}')">
+                             onclick="toggleCategoria('${categoria.replace(/'/g, "\\'")}')">
                             <div>
                                 <div class="categoria-title">${categoria}</div>
                                 <div class="categoria-progress">${aulasConcluidasCategoria}/${aulas.length} concluídas</div>
                             </div>
                             <div class="categoria-arrow">▼</div>
                         </div>
-                        <div class="aulas-container" id="aulas-${categoria.replace(/\s+/g, '-')}">
+                        <div class="aulas-container" id="aulas-${categoria.replace(/\s+/g, '-')}" 
+                             style="${categoriaAberta ? 'display: grid;' : 'display: none;'}">
                             ${aulas.map((aula, index) => {
                                 const concluida = aulasConcluidas.includes(aula.nome);
                                 const progresso = progressoAulas[aula.nome] || { tempo: 0, percentual: 0 };
@@ -972,6 +887,7 @@
                                     </div>
                                     <div class="aula-info">
                                         <div class="aula-nome">${aula.nome}</div>
+                                        ${aula.duracao ? `<div style="font-size: 0.8rem; color: #7f8c8d;">${aula.duracao}</div>` : ''}
                                         ${percentual > 0 ? `
                                             <div class="aula-progresso">
                                                 <div class="aula-progresso-interno" style="width: ${percentual}%"></div>
@@ -996,18 +912,6 @@
             const aulasContainer = document.getElementById(`aulas-${categoria.replace(/\s+/g, '-')}`);
             const estaAberta = categoriaElement.classList.contains('aberta');
             
-            // Fecha todas as outras categorias
-            document.querySelectorAll('.categoria-header.aberta').forEach(header => {
-                if (header !== categoriaElement) {
-                    header.classList.remove('aberta');
-                    const outrasAulas = header.nextElementSibling;
-                    if (outrasAulas && outrasAulas.classList.contains('aulas-container')) {
-                        outrasAulas.style.display = 'none';
-                    }
-                }
-            });
-            
-            // Alterna a categoria atual
             if (estaAberta) {
                 categoriaElement.classList.remove('aberta');
                 aulasContainer.style.display = 'none';
@@ -1045,26 +949,6 @@
             renderizarCategorias();
             atualizarEstatisticas();
             salvarDadosUsuario();
-            
-            verificarCategoriasConcluidas();
-        }
-
-        function verificarCategoriasConcluidas() {
-            for (const [categoria, aulas] of Object.entries(aulasPorCategoria)) {
-                const aulasConcluidasCategoria = aulas.filter(a => aulasConcluidas.includes(a.nome)).length;
-                const progressoCategoria = aulas.length > 0 ? (aulasConcluidasCategoria / aulas.length) * 100 : 0;
-                
-                if (progressoCategoria === 100) {
-                    const categoriaElement = document.querySelector(`[onclick="toggleCategoria('${categoria}')"]`);
-                    const aulasContainer = document.getElementById(`aulas-${categoria.replace(/\s+/g, '-')}`);
-                    
-                    if (categoriaElement && aulasContainer) {
-                        categoriaElement.classList.remove('aberta');
-                        aulasContainer.style.display = 'none';
-                        categoriasAbertas[categoria] = false;
-                    }
-                }
-            }
         }
 
         function iniciarMonitoramentoProgresso() {
