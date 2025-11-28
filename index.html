@@ -107,6 +107,15 @@
         transform: translateY(-2px);
     }
     
+    .btn-success {
+        background: var(--success);
+        color: white;
+    }
+    
+    .btn-success:hover {
+        background: #219a52;
+    }
+    
     .error-message {
         background: #ffeaa7;
         color: #d63031;
@@ -174,6 +183,19 @@
         cursor: pointer;
         margin-top: 10px;
         font-size: 0.9rem;
+        width: 100%;
+    }
+    
+    .acessos-btn {
+        background: var(--success);
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 10px;
+        font-size: 0.9rem;
+        width: 100%;
     }
     
     .progress-section {
@@ -384,6 +406,7 @@
         white-space: nowrap;
     }
     
+    /* Modal de Vídeo */
     .modal {
         display: none;
         position: fixed;
@@ -462,6 +485,131 @@
         align-items: center;
     }
     
+    /* Modal de Acessos */
+    .modal-acessos {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        z-index: 1000;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    .modal-acessos-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 600px;
+        background: white;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    
+    .modal-acessos-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 25px;
+        background: var(--success);
+        color: white;
+    }
+    
+    .modal-acessos-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+    }
+    
+    .modal-acessos-body {
+        padding: 25px;
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+    
+    .arquivo-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        border: 2px solid var(--light);
+        border-radius: 10px;
+        margin-bottom: 10px;
+        transition: all 0.3s ease;
+    }
+    
+    .arquivo-item:hover {
+        border-color: var(--success);
+        background: #f8fff9;
+    }
+    
+    .arquivo-info {
+        flex: 1;
+    }
+    
+    .arquivo-nome {
+        font-weight: 600;
+        color: var(--dark);
+        margin-bottom: 5px;
+    }
+    
+    .arquivo-tipo {
+        font-size: 0.8rem;
+        color: #7f8c8d;
+        background: var(--light);
+        padding: 2px 8px;
+        border-radius: 12px;
+        display: inline-block;
+    }
+    
+    .arquivo-link {
+        background: var(--secondary);
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 6px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 0.9rem;
+        transition: background 0.3s ease;
+    }
+    
+    .arquivo-link:hover {
+        background: #2980b9;
+        text-decoration: none;
+        color: white;
+    }
+    
+    .arquivo-download {
+        background: var(--warning);
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 6px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 0.9rem;
+        transition: background 0.3s ease;
+    }
+    
+    .arquivo-download:hover {
+        background: #e67e22;
+        text-decoration: none;
+        color: white;
+    }
+    
+    .sem-acessos {
+        text-align: center;
+        padding: 40px;
+        color: #7f8c8d;
+    }
+    
     .btn-outline {
         background: transparent;
         color: var(--dark);
@@ -529,6 +677,17 @@
             width: 100%;
             justify-content: center;
         }
+        
+        .arquivo-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        
+        .arquivo-link, .arquivo-download {
+            align-self: stretch;
+            text-align: center;
+        }
     }
 </style>
 </head>
@@ -569,6 +728,9 @@
                     <div class="user-avatar" id="user-avatar">U</div>
                     <h3 id="user-name">Usuário</h3>
                     <p>Bem-vindo ao treinamento!</p>
+                    <button class="acessos-btn" onclick="abrirAcessos()">
+                        📁 Meus Acessos
+                    </button>
                     <button class="logout-btn" onclick="fazerLogout()">Sair</button>
                 </div>
                 
@@ -637,18 +799,32 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Modal de Acessos -->
+        <div class="modal-acessos" id="acessos-modal">
+            <div class="modal-acessos-content">
+                <div class="modal-acessos-header">
+                    <div class="modal-acessos-title">📁 Meus Acessos</div>
+                    <button class="close-modal" onclick="fecharAcessos()">×</button>
+                </div>
+                <div class="modal-acessos-body" id="acessos-lista">
+                    <div class="loading">Carregando seus acessos...</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         // URLs das APIs
-        const API_URL = "https://script.google.com/macros/s/AKfycbzsVFKHm28GY_M2QmDOdLS6JzCFmQ-dcb7gAZg4-IkmZ0AoAJ3aGPvOXa5xnrfW5wxiHA/exec";
-        const API_AULAS = "https://script.google.com/macros/s/AKfycbzsVFKHm28GY_M2QmDOdLS6JzCFmQ-dcb7gAZg4-IkmZ0AoAJ3aGPvOXa5xnrfW5wxiHA/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbzaAF6RoDCbg3x5gAcRq-wm9uUcsh77NDKo4ORAa_HiL5vlhxsqzCdFeI7uUTx3qeDFQQ/exec";
+        const API_AULAS = "https://script.google.com/macros/s/AKfycbzHoYUJ8INDFlmvd_BFkAh0SUCCBDEhs_nRIvb84VUgmzH9Q0X_S_Bgdmyc85CdVJrDqQ/exec";
         
         let usuarioLogado = null;
         let todasAulas = [];
         let aulasPorCategoria = {};
         let aulaAtual = null;
         let categoriasAbertas = {};
+        let arquivosAcesso = [];
         
         let progressoAulas = {};
         let aulasConcluidas = [];
@@ -694,6 +870,7 @@
                     if (data.status === "ok") {
                         // Login bem-sucedido
                         usuarioLogado = data.usuario;
+                        arquivosAcesso = data.arquivosAcesso || [];
                         entrarNaPlataforma();
                     } else {
                         mostrarErro(data.mensagem || 'Erro no login');
@@ -712,6 +889,7 @@
                             ultimoAcesso: 'Nunca',
                             acessoTreinamento: true
                         };
+                        arquivosAcesso = [];
                         entrarNaPlataforma();
                     } else {
                         mostrarErro('Erro de conexão. Verifique sua senha e tente novamente.');
@@ -736,6 +914,48 @@
             document.getElementById('buscar-aula').addEventListener('input', filtrarAulas);
         }
 
+        function abrirAcessos() {
+            const modal = document.getElementById('acessos-modal');
+            const lista = document.getElementById('acessos-lista');
+            
+            if (arquivosAcesso.length === 0) {
+                lista.innerHTML = `
+                    <div class="sem-acessos">
+                        <h3>Nenhum acesso disponível</h3>
+                        <p>Você não tem arquivos liberados no momento.</p>
+                    </div>
+                `;
+            } else {
+                let html = '';
+                arquivosAcesso.forEach(arquivo => {
+                    const isDownload = arquivo.tipo && arquivo.tipo.toLowerCase() === 'download';
+                    const botaoClass = isDownload ? 'arquivo-download' : 'arquivo-link';
+                    const botaoText = isDownload ? '📥 Download' : '🔗 Acessar';
+                    
+                    html += `
+                        <div class="arquivo-item">
+                            <div class="arquivo-info">
+                                <div class="arquivo-nome">${arquivo.nome}</div>
+                                <div class="arquivo-tipo">${isDownload ? 'Download' : 'Link'}</div>
+                            </div>
+                            ${arquivo.link ? `
+                                <a href="${arquivo.link}" target="_blank" class="${botaoClass}">
+                                    ${botaoText}
+                                </a>
+                            ` : '<span style="color: #95a5a6;">Sem link</span>'}
+                        </div>
+                    `;
+                });
+                lista.innerHTML = html;
+            }
+            
+            modal.style.display = 'block';
+        }
+
+        function fecharAcessos() {
+            document.getElementById('acessos-modal').style.display = 'none';
+        }
+
         function carregarDadosUsuario() {
             const dados = localStorage.getItem(`progresso_${usuarioLogado.codigo}`);
             if (dados) {
@@ -758,6 +978,7 @@
         function fazerLogout() {
             if (confirm('Deseja realmente sair?')) {
                 usuarioLogado = null;
+                arquivosAcesso = [];
                 document.getElementById('platform-container').style.display = 'none';
                 document.getElementById('login-container').style.display = 'block';
                 document.getElementById('input-senha').value = '';
@@ -1122,12 +1343,19 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 fecharModal();
+                fecharAcessos();
             }
         });
 
         document.getElementById('video-modal').addEventListener('click', function(e) {
             if (e.target === this) {
                 fecharModal();
+            }
+        });
+
+        document.getElementById('acessos-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                fecharAcessos();
             }
         });
     </script>
