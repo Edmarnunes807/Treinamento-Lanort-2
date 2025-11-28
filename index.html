@@ -814,8 +814,8 @@
 
     <script>
         // URLs das APIs
-        const API_URL = "https://script.google.com/macros/s/AKfycbzsVFKHm28GY_M2QmDOdLS6JzCFmQ-dcb7gAZg4-IkmZ0AoAJ3aGPvOXa5xnrfW5wxiHA/exec";
-        const API_AULAS = "https://script.google.com/macros/s/AKfycbzsVFKHm28GY_M2QmDOdLS6JzCFmQ-dcb7gAZg4-IkmZ0AoAJ3aGPvOXa5xnrfW5wxiHA/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbyP4dWt4mAL93lFvW_oiEgKWcRpWY9HKx3JAPqc9CfMcNcfks1EmPOIdP6Zx5EekWAb9A/exec";
+        const API_AULAS = "https://script.google.com/macros/s/AKfycbyP4dWt4mAL93lFvW_oiEgKWcRpWY9HKx3JAPqc9CfMcNcfks1EmPOIdP6Zx5EekWAb9A/exec";
         
         let usuarioLogado = null;
         let todasAulas = [];
@@ -849,22 +849,12 @@
         function enviarProgressoParaPlanilha() {
             if (!usuarioLogado) return;
             
-            const aulasEmAndamento = Object.values(progressoAulas).filter(p => 
-                p.percentual > 5 && p.percentual < 95
-            ).length;
-            
-            const progressoPercentual = todasAulas.length > 0 ? 
-                Math.round((aulasConcluidas.length / todasAulas.length) * 100) : 0;
-            
             const dadosProgresso = {
                 tipo: 'usuarios',
                 codigo: usuarioLogado.codigo,
-                apelido: usuarioLogado.apelido,
                 'aulas concluídas': aulasConcluidas.length,
                 'aulas disponíveis': todasAulas.length,
-                'aulas em andamento': aulasEmAndamento,
-                'ultimo acesso': new Date().toLocaleDateString('pt-BR'),
-                'progresso percentual': progressoPercentual
+                'ultimo acesso': new Date().toLocaleDateString('pt-BR')
             };
             
             console.log('📤 Enviando dados para planilha:', dadosProgresso);
@@ -1438,21 +1428,12 @@
         window.addEventListener('beforeunload', function() {
             if (usuarioLogado && todasAulas.length > 0) {
                 // Tenta enviar os dados antes de sair
-                const aulasEmAndamento = Object.values(progressoAulas).filter(p => 
-                    p.percentual > 5 && p.percentual < 95
-                ).length;
-                
-                const progressoPercentual = Math.round((aulasConcluidas.length / todasAulas.length) * 100);
-                
                 const dados = {
                     tipo: 'usuarios',
                     codigo: usuarioLogado.codigo,
-                    apelido: usuarioLogado.apelido,
                     'aulas concluídas': aulasConcluidas.length,
                     'aulas disponíveis': todasAulas.length,
-                    'aulas em andamento': aulasEmAndamento,
-                    'ultimo acesso': new Date().toLocaleDateString('pt-BR'),
-                    'progresso percentual': progressoPercentual
+                    'ultimo acesso': new Date().toLocaleDateString('pt-BR')
                 };
                 
                 // Usa navigator.sendBeacon para garantir o envio
