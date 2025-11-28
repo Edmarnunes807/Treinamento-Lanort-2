@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plataforma de Treinamento</title>
+<style>
+    :root {
+        --primary: #2c3e50;
+        --secondary: #3498db;
+        --success: #27ae60;
+        --warning: #f39c12;
+        --danger: #e74c3c;
+        --light: #ecf0f1;
+        --dark: #34495e;
+    }
+    
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    
+    .login-container {
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        width: 100%;
+        max-width: 450px;
+        text-align: center;
+    }
+    
+    .logo {
+        font-size: 3rem;
+        margin-bottom: 20px;
+    }
+    
+    .login-title {
+        color: var(--primary);
+        margin-bottom: 10px;
+        font-size: 1.8rem;
+    }
+    
+    .login-subtitle {
+        color: var(--dark);
+        margin-bottom: 30px;
+        opacity: 0.8;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+        text-align: left;
+    }
+    
+    .form-label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--dark);
+        font-weight: 600;
+    }
+    
+    .form-select, .form-input {
+        width: 100%;
+        padding: 15px;
+        border: 2px solid #ddd;
+        border-radius: 10px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-select:focus, .form-input:focus {
+        outline: none;
+        border-color: var(--secondary);
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+    
+    .btn {
+        width: 100%;
+        padding: 15px;
+        border: none;
+        border-radius: 10px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 10px;
+    }
+    
+    .btn-primary {
+        background: var(--secondary);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #2980b9;
+        transform: translateY(-2px);
+    }
+    
+    .error-message {
+        background: #ffeaa7;
+        color: #d63031;
+        padding: 12px;
+        border-radius: 8px;
+        margin: 15px 0;
+        display: none;
+    }
+    
+    .loading {
+        text-align: center;
+        padding: 20px;
+        color: var(--dark);
+    }
+    
+    .platform-container {
+        display: none;
+        width: 100%;
+        max-width: 1200px;
+    }
+    
+    .container {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 20px;
+    }
+    
+    .sidebar {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        height: fit-content;
+        position: sticky;
+        top: 20px;
+    }
+    
+    .user-info {
+        text-align: center;
+        padding: 20px 0;
+        border-bottom: 2px solid var(--light);
+        margin-bottom: 20px;
+    }
+    
+    .user-avatar {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: var(--secondary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin: 0 auto 10px;
+    }
+    
+    .logout-btn {
+        background: var(--danger);
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 10px;
+        font-size: 0.9rem;
+    }
+    
+    .progress-section {
+        margin: 20px 0;
+    }
+    
+    .progress-bar {
+        width: 100%;
+        height: 10px;
+        background: var(--light);
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 10px 0;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: var(--success);
+        transition: width 0.5s ease;
+    }
+    
+    .progress-text {
+        font-size: 0.9rem;
+        color: var(--dark);
+        text-align: center;
+        font-weight: 600;
+    }
+    
+    .stats {
+        background: var(--light);
+        padding: 15px;
+        border-radius: 10px;
+        margin-top: 20px;
+    }
+    
+    .stat-item {
+        margin: 10px 0;
+        font-size: 0.9rem;
+    }
+    
+    .main-content {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+    
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid var(--light);
+    }
+    
+    .categoria {
+        margin-bottom: 15px;
+    }
+    
+    .categoria-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 20px;
+        background: var(--light);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    
+    .categoria-header:hover {
+        background: #d5dbdb;
+    }
+    
+    .categoria-header.concluida {
+        background: var(--success);
+        color: white;
+    }
+    
+    .categoria-header.concluida .categoria-title,
+    .categoria-header.concluida .categoria-progress,
+    .categoria-header.concluida .categoria-arrow {
+        color: white;
+    }
+    
+    .categoria-title {
+        font-size: 1.2rem;
+        color: var(--primary);
+        font-weight: 600;
+    }
+    
+    .categoria-progress {
+        font-size: 0.8rem;
+        color: var(--dark);
+    }
+    
+    .categoria-arrow {
+        font-size: 1.2rem;
+        transition: transform 0.3s ease;
+        color: var(--dark);
+    }
+    
+    .categoria-header.aberta .categoria-arrow {
+        transform: rotate(180deg);
+    }
+    
+    .aulas-container {
+        display: none;
+        gap: 8px;
+        margin-top: 10px;
+        animation: slideDown 0.3s ease;
+    }
+    
+    .categoria-header.aberta + .aulas-container {
+        display: grid;
+    }
+    
+    .aula {
+        display: flex;
+        align-items: center;
+        padding: 15px;
+        background: white;
+        border: 2px solid var(--light);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    
+    .aula:hover {
+        border-color: var(--secondary);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+    }
+    
+    .aula.assistida {
+        border-color: var(--success);
+        background: #f8fff9;
+    }
+    
+    .aula.assistindo {
+        border-color: var(--warning);
+        background: #fffaf0;
+    }
+    
+    .aula.ativa {
+        border-color: var(--secondary);
+        background: #f0f8ff;
+    }
+    
+    .aula-status {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 2px solid #bdc3c7;
+        margin-right: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    
+    .aula.assistida .aula-status {
+        background: var(--success);
+        border-color: var(--success);
+        color: white;
+    }
+    
+    .aula.assistindo .aula-status {
+        background: var(--warning);
+        border-color: var(--warning);
+        color: white;
+    }
+    
+    .aula-info {
+        flex: 1;
+    }
+    
+    .aula-nome {
+        font-weight: 600;
+        color: var(--dark);
+        margin-bottom: 4px;
+    }
+    
+    .aula-progresso {
+        height: 4px;
+        background: #ecf0f1;
+        border-radius: 2px;
+        margin-top: 5px;
+        overflow: hidden;
+    }
+    
+    .aula-progresso-interno {
+        height: 100%;
+        background: var(--success);
+        transition: width 0.3s ease;
+        width: 0%;
+    }
+    
+    .aula-tempo {
+        font-size: 0.8rem;
+        color: #7f8c8d;
+        margin-left: 15px;
+        white-space: nowrap;
+    }
+    
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.9);
+        z-index: 1000;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    .modal-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 1000px;
+        background: white;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 25px;
+        background: var(--primary);
+        color: white;
+    }
+    
+    .modal-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+    }
+    
+    .close-modal {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.3s ease;
+    }
+    
+    .close-modal:hover {
+        background: rgba(255,255,255,0.2);
+    }
+    
+    .modal-body {
+        padding: 0;
+    }
+    
+    .modal-video {
+        width: 100%;
+        height: 500px;
+        border: none;
+        display: block;
+    }
+    
+    .modal-controls {
+        padding: 20px;
+        background: var(--light);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .btn-outline {
+        background: transparent;
+        color: var(--dark);
+        border: 2px solid #bdc3c7;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-outline:hover {
+        background: #dfe6e9;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    @keyframes slideDown {
+        from { 
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to { 
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .login-container {
+            padding: 30px 20px;
+        }
+        
+        .container {
+            grid-template-columns: 1fr;
+        }
+        
+        .sidebar {
+            position: static;
+        }
+        
+        .header {
+            flex-direction: column;
+            gap: 15px;
+            text-align: center;
+        }
+        
+        .modal-video {
+            height: 300px;
+        }
+        
+        .modal-content {
+            width: 95%;
+        }
+        
+        .modal-controls {
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .modal-controls .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+</head>
+<body>
+    <!-- Tela de Login -->
+    <div class="login-container" id="login-container">
+        <div class="logo">🎓</div>
+        <h1 class="login-title">Plataforma de Treinamento</h1>
+        <p class="login-subtitle">Faça login para acessar o conteúdo</p>
+        
+        <div class="error-message" id="error-message"></div>
+        
+        <div class="form-group">
+            <label class="form-label">Selecione seu usuário:</label>
+            <select class="form-select" id="select-usuario">
+                <option value="">Carregando usuários...</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">Senha:</label>
+            <input type="password" class="form-input" id="input-senha" placeholder="Digite sua senha">
+        </div>
+        
+        <button class="btn btn-primary" onclick="fazerLogin()" id="btn-login">
+            Entrar na Plataforma
+        </button>
+        
+        <div class="loading" id="login-loading" style="display: none;">
+            Carregando...
+        </div>
+    </div>
+
+    <!-- Plataforma -->
+    <div class="platform-container" id="platform-container">
+        <div class="container">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="user-info">
+                    <div class="user-avatar" id="user-avatar">U</div>
+                    <h3 id="user-name">Usuário</h3>
+                    <p>Bem-vindo ao treinamento!</p>
+                    <button class="logout-btn" onclick="fazerLogout()">Sair</button>
+                </div>
+                
+                <div class="progress-section">
+                    <h4>Progresso Geral</h4>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progresso-geral" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-text" id="texto-progresso">0% concluído</div>
+                </div>
+                
+                <div class="stats">
+                    <h4>Estatísticas</h4>
+                    <div class="stat-item">
+                        <strong id="total-aulas">0</strong> aulas disponíveis
+                    </div>
+                    <div class="stat-item">
+                        <strong id="aulas-concluidas">0</strong> aulas concluídas
+                    </div>
+                    <div class="stat-item">
+                        <strong id="aulas-assistindo">0</strong> aulas em andamento
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Conteúdo Principal -->
+            <div class="main-content">
+                <div class="header">
+                    <h1>Plataforma de Treinamento</h1>
+                    <div class="search-box">
+                        <input type="text" placeholder="Buscar aulas..." id="buscar-aula" 
+                               style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; width: 250px;">
+                    </div>
+                </div>
+                
+                <!-- Lista de Categorias e Aulas -->
+                <div id="lista-categorias">
+                    <div class="loading">Carregando aulas...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal de Vídeo -->
+        <div class="modal" id="video-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title" id="modal-title">Carregando...</div>
+                    <button class="close-modal" onclick="fecharModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <iframe class="modal-video" id="modal-video" 
+                            allow="autoplay; fullscreen" 
+                            allowfullscreen>
+                    </iframe>
+                </div>
+                <div class="modal-controls">
+                    <button class="btn-outline" onclick="aulaAnterior()" id="btn-anterior">
+                        ← Aula Anterior
+                    </button>
+                    <button class="btn btn-primary" onclick="marcarComoConcluida()" id="btn-concluir">
+                        ✅ Marcar como Concluída
+                    </button>
+                    <button class="btn-outline" onclick="proximaAula()" id="btn-proximo">
+                        Próxima Aula →
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // URL da sua API original do Google Sheets
+        const API_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbzHoYUJ8INDFlmvd_BFkAh0SUCCBDEhs_nRIvb84VUgmzH9Q0X_S_Bgdmyc85CdVJrDqQ/exec";
+        
+        let usuarioLogado = null;
+        let todasAulas = [];
+        let aulasPorCategoria = {};
+        let aulaAtual = null;
+        let categoriasAbertas = {};
+        
+        let progressoAulas = {};
+        let aulasConcluidas = [];
+        let usuariosMap = {};
+
+        document.addEventListener('DOMContentLoaded', function() {
+            carregarUsuarios();
+            
+            document.getElementById('input-senha').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    fazerLogin();
+                }
+            });
+        });
+
+        function carregarUsuarios() {
+            // Usuários fixos para demonstração
+            const usuariosDemo = [
+                { codigo: "1", apelido: "João Silva" },
+                { codigo: "2", apelido: "Maria Santos" },
+                { codigo: "3", apelido: "Pedro Oliveira" },
+                { codigo: "4", apelido: "Ana Costa" }
+            ];
+            
+            popularSelectUsuarios(usuariosDemo);
+        }
+
+        function popularSelectUsuarios(usuarios) {
+            const select = document.getElementById('select-usuario');
+            select.innerHTML = '<option value="">Selecione seu usuário</option>';
+            
+            usuariosMap = {};
+            
+            usuarios.forEach(usuario => {
+                usuariosMap[usuario.apelido] = usuario.codigo;
+                
+                const option = document.createElement('option');
+                option.value = usuario.apelido;
+                option.textContent = usuario.apelido;
+                option.setAttribute('data-codigo', usuario.codigo);
+                select.appendChild(option);
+            });
+        }
+
+        function fazerLogin() {
+            const nomeUsuario = document.getElementById('select-usuario').value;
+            const senha = document.getElementById('input-senha').value;
+            
+            if (!nomeUsuario) {
+                mostrarErro('Selecione um usuário');
+                return;
+            }
+            
+            if (!senha) {
+                mostrarErro('Digite a senha');
+                return;
+            }
+            
+            const codigo = usuariosMap[nomeUsuario];
+            
+            if (!codigo) {
+                mostrarErro('Usuário não encontrado');
+                return;
+            }
+            
+            document.getElementById('btn-login').style.display = 'none';
+            document.getElementById('login-loading').style.display = 'block';
+            
+            // Simulação de login - senha é código + 1125
+            const senhaEsperada = (parseInt(codigo) + 1125).toString();
+            
+            setTimeout(() => {
+                if (senha === senhaEsperada) {
+                    usuarioLogado = { codigo: codigo, apelido: nomeUsuario };
+                    entrarNaPlataforma();
+                } else {
+                    mostrarErro('Senha incorreta');
+                }
+                
+                document.getElementById('btn-login').style.display = 'block';
+                document.getElementById('login-loading').style.display = 'none';
+            }, 1000);
+        }
+
+        function entrarNaPlataforma() {
+            carregarDadosUsuario();
+            
+            document.getElementById('user-name').textContent = usuarioLogado.apelido;
+            document.getElementById('user-avatar').textContent = usuarioLogado.apelido.charAt(0);
+            
+            document.getElementById('login-container').style.display = 'none';
+            document.getElementById('platform-container').style.display = 'block';
+            
+            carregarAulas();
+            document.getElementById('buscar-aula').addEventListener('input', filtrarAulas);
+        }
+
+        function carregarDadosUsuario() {
+            const dados = localStorage.getItem(`progresso_${usuarioLogado.codigo}`);
+            if (dados) {
+                const parsed = JSON.parse(dados);
+                progressoAulas = parsed.progressoAulas || {};
+                aulasConcluidas = parsed.aulasConcluidas || [];
+                categoriasAbertas = parsed.categoriasAbertas || {};
+            }
+        }
+
+        function salvarDadosUsuario() {
+            const dados = {
+                progressoAulas: progressoAulas,
+                aulasConcluidas: aulasConcluidas,
+                categoriasAbertas: categoriasAbertas
+            };
+            localStorage.setItem(`progresso_${usuarioLogado.codigo}`, JSON.stringify(dados));
+        }
+
+        function fazerLogout() {
+            if (confirm('Deseja realmente sair?')) {
+                usuarioLogado = null;
+                document.getElementById('platform-container').style.display = 'none';
+                document.getElementById('login-container').style.display = 'block';
+                document.getElementById('input-senha').value = '';
+            }
+        }
+
+        function mostrarErro(mensagem) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = mensagem;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function carregarAulas() {
+            fetch(API_GOOGLE_SHEETS)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Dados recebidos da API:', data);
+                    
+                    // Processa os dados da sua API do Google Sheets
+                    if (data.dados && data.dados.length > 0) {
+                        processarDadosGoogleSheets(data.dados);
+                        atualizarEstatisticas();
+                    } else {
+                        document.getElementById('lista-categorias').innerHTML = 
+                            '<div class="loading">Nenhuma aula encontrada</div>';
+                    }
+                })
+                .catch(err => {
+                    console.error('Erro ao carregar aulas:', err);
+                    document.getElementById('lista-categorias').innerHTML = 
+                        '<div class="loading">Erro ao carregar aulas. Usando dados de demonstração.</div>';
+                    // Dados de demonstração em caso de erro
+                    usarDadosDemonstracao();
+                });
+        }
+
+        function processarDadosGoogleSheets(dados) {
+            todasAulas = [];
+            aulasPorCategoria = {};
+            
+            dados.forEach(item => {
+                // Processa cada item da planilha
+                const categoria = item.categoria || item[""] || "GERAL";
+                const nome = item.nome || "Aula sem nome";
+                const url = item.url || "";
+                const tipo = item.tipo || "video";
+                
+                // Só adiciona se for um vídeo com URL válida
+                if (url && url.includes('drive.google.com') && tipo === 'video') {
+                    if (!aulasPorCategoria[categoria]) {
+                        aulasPorCategoria[categoria] = [];
+                    }
+                    
+                    const aula = {
+                        nome: nome,
+                        url: converterUrlParaEmbed(url),
+                        categoria: categoria,
+                        tipo: tipo
+                    };
+                    
+                    todasAulas.push(aula);
+                    aulasPorCategoria[categoria].push(aula);
+                }
+            });
+            
+            renderizarCategorias();
+        }
+
+        function converterUrlParaEmbed(url) {
+            // Converte URL do Google Drive para embed
+            if (url.includes('/file/d/')) {
+                const videoId = url.split('/file/d/')[1].split('/')[0];
+                return `https://drive.google.com/file/d/${videoId}/preview`;
+            }
+            return url;
+        }
+
+        function usarDadosDemonstracao() {
+            // Dados de demonstração caso a API não funcione
+            todasAulas = [
+                {
+                    nome: "⚠️ LEIA ANTES DE ACESSAR AS AULAS",
+                    url: "https://drive.google.com/file/d/1inIZ1v0nxhTm6S--7cJFuIQxoyGpuatl/preview",
+                    categoria: "INFORMATIVO",
+                    tipo: "video"
+                }
+            ];
+            
+            aulasPorCategoria = {
+                "INFORMATIVO": todasAulas
+            };
+            
+            renderizarCategorias();
+            atualizarEstatisticas();
+        }
+
+        function renderizarCategorias() {
+            const container = document.getElementById('lista-categorias');
+            
+            if (Object.keys(aulasPorCategoria).length === 0) {
+                container.innerHTML = '<div class="loading">Nenhuma aula encontrada</div>';
+                return;
+            }
+
+            let html = '';
+            for (const [categoria, aulas] of Object.entries(aulasPorCategoria)) {
+                const aulasConcluidasCategoria = aulas.filter(a => aulasConcluidas.includes(a.nome)).length;
+                const progressoCategoria = aulas.length > 0 ? (aulasConcluidasCategoria / aulas.length) * 100 : 0;
+                const categoriaConcluida = progressoCategoria === 100;
+                const categoriaAberta = categoriasAbertas[categoria] && !categoriaConcluida;
+
+                html += `
+                    <div class="categoria">
+                        <div class="categoria-header ${categoriaAberta ? 'aberta' : ''} ${categoriaConcluida ? 'concluida' : ''}" 
+                             onclick="toggleCategoria('${categoria}')">
+                            <div>
+                                <div class="categoria-title">${categoria}</div>
+                                <div class="categoria-progress">${aulasConcluidasCategoria}/${aulas.length} concluídas</div>
+                            </div>
+                            <div class="categoria-arrow">▼</div>
+                        </div>
+                        <div class="aulas-container" id="aulas-${categoria.replace(/\s+/g, '-')}">
+                            ${aulas.map((aula, index) => {
+                                const concluida = aulasConcluidas.includes(aula.nome);
+                                const progresso = progressoAulas[aula.nome] || { tempo: 0, percentual: 0 };
+                                const assistindo = progresso.percentual > 0 && progresso.percentual < 95;
+                                
+                                const classes = [
+                                    concluida ? 'assistida' : '',
+                                    assistindo ? 'assistindo' : '',
+                                    aulaAtual && aula.nome === aulaAtual.nome ? 'ativa' : ''
+                                ].filter(c => c).join(' ');
+                                
+                                const tempoAssistido = formatarTempo(progresso.tempo);
+                                const percentual = progresso.percentual || 0;
+                                
+                                return `
+                                <div class="aula ${classes}" 
+                                     onclick="abrirAula('${aula.nome.replace(/'/g, "\\'")}', '${aula.url}', '${categoria.replace(/'/g, "\\'")}', ${index})">
+                                    <div class="aula-status">
+                                        ${concluida ? '✓' : (assistindo ? '▶' : (index + 1))}
+                                    </div>
+                                    <div class="aula-info">
+                                        <div class="aula-nome">${aula.nome}</div>
+                                        ${percentual > 0 ? `
+                                            <div class="aula-progresso">
+                                                <div class="aula-progresso-interno" style="width: ${percentual}%"></div>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                    ${tempoAssistido ? `
+                                        <div class="aula-tempo">${tempoAssistido}</div>
+                                    ` : ''}
+                                </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function toggleCategoria(categoria) {
+            const categoriaElement = document.querySelector(`[onclick="toggleCategoria('${categoria}')"]`);
+            const aulasContainer = document.getElementById(`aulas-${categoria.replace(/\s+/g, '-')}`);
+            const estaAberta = categoriaElement.classList.contains('aberta');
+            
+            // Fecha todas as outras categorias
+            document.querySelectorAll('.categoria-header.aberta').forEach(header => {
+                if (header !== categoriaElement) {
+                    header.classList.remove('aberta');
+                    const outrasAulas = header.nextElementSibling;
+                    if (outrasAulas && outrasAulas.classList.contains('aulas-container')) {
+                        outrasAulas.style.display = 'none';
+                    }
+                }
+            });
+            
+            // Alterna a categoria atual
+            if (estaAberta) {
+                categoriaElement.classList.remove('aberta');
+                aulasContainer.style.display = 'none';
+                categoriasAbertas[categoria] = false;
+            } else {
+                categoriaElement.classList.add('aberta');
+                aulasContainer.style.display = 'grid';
+                categoriasAbertas[categoria] = true;
+            }
+            
+            salvarDadosUsuario();
+        }
+
+        function abrirAula(nome, url, categoria, index) {
+            aulaAtual = { nome, url, categoria, index };
+            
+            document.querySelectorAll('.aula').forEach(a => a.classList.remove('ativa'));
+            event.currentTarget.classList.add('ativa');
+            
+            document.getElementById('modal-title').textContent = nome;
+            document.getElementById('video-modal').style.display = 'block';
+            
+            const iframe = document.getElementById('modal-video');
+            iframe.src = url;
+            
+            iniciarMonitoramentoProgresso();
+            atualizarBotoesNavegacao();
+        }
+
+        function fecharModal() {
+            document.getElementById('video-modal').style.display = 'none';
+            document.getElementById('modal-video').src = '';
+            
+            pararMonitoramentoProgresso();
+            renderizarCategorias();
+            atualizarEstatisticas();
+            salvarDadosUsuario();
+            
+            verificarCategoriasConcluidas();
+        }
+
+        function verificarCategoriasConcluidas() {
+            for (const [categoria, aulas] of Object.entries(aulasPorCategoria)) {
+                const aulasConcluidasCategoria = aulas.filter(a => aulasConcluidas.includes(a.nome)).length;
+                const progressoCategoria = aulas.length > 0 ? (aulasConcluidasCategoria / aulas.length) * 100 : 0;
+                
+                if (progressoCategoria === 100) {
+                    const categoriaElement = document.querySelector(`[onclick="toggleCategoria('${categoria}')"]`);
+                    const aulasContainer = document.getElementById(`aulas-${categoria.replace(/\s+/g, '-')}`);
+                    
+                    if (categoriaElement && aulasContainer) {
+                        categoriaElement.classList.remove('aberta');
+                        aulasContainer.style.display = 'none';
+                        categoriasAbertas[categoria] = false;
+                    }
+                }
+            }
+        }
+
+        function iniciarMonitoramentoProgresso() {
+            if (window.progressInterval) clearInterval(window.progressInterval);
+            
+            window.progressInterval = setInterval(() => {
+                if (aulaAtual) {
+                    const progressoAtual = progressoAulas[aulaAtual.nome] || { tempo: 0, percentual: 0 };
+                    
+                    progressoAtual.tempo += 10;
+                    progressoAtual.percentual = Math.min(100, progressoAtual.percentual + 5);
+                    
+                    progressoAulas[aulaAtual.nome] = progressoAtual;
+                    
+                    if (progressoAtual.percentual >= 95 && !aulasConcluidas.includes(aulaAtual.nome)) {
+                        marcarComoConcluida();
+                    }
+                }
+            }, 10000);
+        }
+
+        function pararMonitoramentoProgresso() {
+            if (window.progressInterval) {
+                clearInterval(window.progressInterval);
+                window.progressInterval = null;
+            }
+        }
+
+        function marcarComoConcluida() {
+            if (!aulaAtual) return;
+            
+            if (!aulasConcluidas.includes(aulaAtual.nome)) {
+                aulasConcluidas.push(aulaAtual.nome);
+                
+                if (progressoAulas[aulaAtual.nome]) {
+                    progressoAulas[aulaAtual.nome].percentual = 100;
+                }
+                
+                const btnConcluir = document.getElementById('btn-concluir');
+                btnConcluir.textContent = '✅ Concluída!';
+                btnConcluir.style.background = '#27ae60';
+                btnConcluir.disabled = true;
+                
+                setTimeout(() => {
+                    fecharModal();
+                }, 1500);
+            }
+        }
+
+        function proximaAula() {
+            if (!aulaAtual) return;
+            
+            const aulasCategoria = aulasPorCategoria[aulaAtual.categoria];
+            const proximaIndex = aulaAtual.index + 1;
+            
+            if (proximaIndex < aulasCategoria.length) {
+                const proximaAula = aulasCategoria[proximaIndex];
+                abrirAula(proximaAula.nome, proximaAula.url, aulaAtual.categoria, proximaIndex);
+            }
+        }
+
+        function aulaAnterior() {
+            if (!aulaAtual) return;
+            
+            const aulasCategoria = aulasPorCategoria[aulaAtual.categoria];
+            const anteriorIndex = aulaAtual.index - 1;
+            
+            if (anteriorIndex >= 0) {
+                const aulaAnterior = aulasCategoria[anteriorIndex];
+                abrirAula(aulaAnterior.nome, aulaAnterior.url, aulaAtual.categoria, anteriorIndex);
+            }
+        }
+
+        function atualizarBotoesNavegacao() {
+            if (!aulaAtual) return;
+            
+            const aulasCategoria = aulasPorCategoria[aulaAtual.categoria];
+            const btnAnterior = document.getElementById('btn-anterior');
+            const btnProximo = document.getElementById('btn-proximo');
+            
+            btnAnterior.disabled = aulaAtual.index === 0;
+            btnProximo.disabled = aulaAtual.index === aulasCategoria.length - 1;
+        }
+
+        function atualizarEstatisticas() {
+            const totalAulas = todasAulas.length;
+            const concluidas = aulasConcluidas.length;
+            const progresso = totalAulas > 0 ? (concluidas / totalAulas) * 100 : 0;
+            
+            const assistindo = Object.values(progressoAulas).filter(p => 
+                p.percentual > 5 && p.percentual < 95
+            ).length;
+            
+            document.getElementById('progresso-geral').style.width = `${progresso}%`;
+            document.getElementById('texto-progresso').textContent = `${Math.round(progresso)}% concluído`;
+            document.getElementById('total-aulas').textContent = totalAulas;
+            document.getElementById('aulas-concluidas').textContent = concluidas;
+            document.getElementById('aulas-assistindo').textContent = assistindo;
+        }
+
+        function filtrarAulas() {
+            const termo = document.getElementById('buscar-aula').value.toLowerCase();
+            
+            if (termo === '') {
+                renderizarCategorias();
+                return;
+            }
+            
+            const aulasFiltradas = todasAulas.filter(aula => 
+                aula.nome.toLowerCase().includes(termo) || 
+                aula.categoria.toLowerCase().includes(termo)
+            );
+            
+            // Recria o objeto aulasPorCategoria com as aulas filtradas
+            const aulasFiltradasPorCategoria = {};
+            aulasFiltradas.forEach(aula => {
+                if (!aulasFiltradasPorCategoria[aula.categoria]) {
+                    aulasFiltradasPorCategoria[aula.categoria] = [];
+                }
+                aulasFiltradasPorCategoria[aula.categoria].push(aula);
+            });
+            
+            aulasPorCategoria = aulasFiltradasPorCategoria;
+            renderizarCategorias();
+        }
+
+        function formatarTempo(segundos) {
+            if (!segundos || segundos < 30) return '';
+            const minutos = Math.floor(segundos / 60);
+            const segs = segundos % 60;
+            return `${minutos}:${segs.toString().padStart(2, '0')}`;
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                fecharModal();
+            }
+        });
+
+        document.getElementById('video-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                fecharModal();
+            }
+        });
+    </script>
+</body>
+</html>
