@@ -696,13 +696,15 @@
     <div class="login-container" id="login-container">
         <div class="logo">🎓</div>
         <h1 class="login-title">Plataforma de Treinamento</h1>
-        <p class="login-subtitle">Faça login para acessar o conteúdo</p>
+        <p class="login-subtitle">Selecione seu usuário para acessar o conteúdo</p>
         
         <div class="error-message" id="error-message"></div>
         
         <div class="form-group">
-            <label class="form-label">Código do Usuário:</label>
-            <input type="text" class="form-input" id="input-codigo" placeholder="Digite seu código">
+            <label class="form-label">Selecione seu Usuário:</label>
+            <select class="form-select" id="select-usuario">
+                <option value="">Carregando usuários...</option>
+            </select>
         </div>
         
         <div class="form-group">
@@ -828,21 +830,65 @@
         
         let progressoAulas = {};
         let aulasConcluidas = [];
-        let usuariosMap = {};
+        let listaUsuarios = [];
 
+        // Carregar lista de usuários ao iniciar a página
         document.addEventListener('DOMContentLoaded', function() {
+            carregarListaUsuarios();
+            
             document.getElementById('input-senha').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     fazerLogin();
                 }
             });
             
-            document.getElementById('input-codigo').addEventListener('keypress', function(e) {
+            document.getElementById('select-usuario').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     fazerLogin();
                 }
             });
         });
+
+        // ✅ CARREGAR LISTA DE USUÁRIOS DA PLANILHA
+        function carregarListaUsuarios() {
+            const selectUsuario = document.getElementById('select-usuario');
+            selectUsuario.innerHTML = '<option value="">Carregando usuários...</option>';
+            
+            fetch(`${API_URL}?tipo=usuarios`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "ok" && data.dados && data.dados.length > 0) {
+                        listaUsuarios = data.dados;
+                        
+                        // Filtra apenas usuários com acesso ao treinamento
+                        const usuariosComAcesso = listaUsuarios.filter(usuario => {
+                            const temAcesso = usuario['acesso treinamento'] && 
+                                            usuario['acesso treinamento'].toString().toLowerCase() === 'sim';
+                            return usuario.codigo && usuario.apelido && temAcesso;
+                        });
+                        
+                        selectUsuario.innerHTML = '<option value="">Selecione seu usuário</option>';
+                        
+                        usuariosComAcesso.forEach(usuario => {
+                            const option = document.createElement('option');
+                            option.value = usuario.codigo;
+                            option.textContent = usuario.apelido;
+                            option.setAttribute('data-codigo', usuario.codigo);
+                            selectUsuario.appendChild(option);
+                        });
+                        
+                        if (usuariosComAcesso.length === 0) {
+                            selectUsuario.innerHTML = '<option value="">Nenhum usuário com acesso encontrado</option>';
+                        }
+                    } else {
+                        selectUsuario.innerHTML = '<option value="">Erro ao carregar usuários</option>';
+                    }
+                })
+                .catch(err => {
+                    console.error('Erro ao carregar lista de usuários:', err);
+                    selectUsuario.innerHTML = '<option value="">Erro ao carregar usuários</option>';
+                });
+        }
 
         // ✅ FUNÇÃO PARA ATUALIZAR DADOS NA PLANILHA
         function atualizarDadosUsuario(dados) {
@@ -909,12 +955,14 @@
             });
         }
 
+        // ✅ FUNÇÃO DE LOGIN MODIFICADA
         function fazerLogin() {
-            const codigo = document.getElementById('input-codigo').value.trim();
+            const selectUsuario = document.getElementById('select-usuario');
+            const codigo = selectUsuario.value;
             const senha = document.getElementById('input-senha').value;
             
             if (!codigo) {
-                mostrarErro('Digite seu código de usuário');
+                mostrarErro('Selecione um usuário');
                 return;
             }
             
@@ -946,9 +994,11 @@
                     // Fallback: validação local (código + 1125)
                     const senhaEsperada = (parseInt(codigo) + 1125).toString();
                     if (senha === senhaEsperada) {
+                        // Encontra o usuário na lista carregada
+                        const usuarioEncontrado = listaUsuarios.find(u => u.codigo == codigo);
                         usuarioLogado = { 
                             codigo: codigo, 
-                            apelido: `Usuário ${codigo}`,
+                            apelido: usuarioEncontrado ? usuarioEncontrado.apelido : `Usuário ${codigo}`,
                             aulasConcluidas: '0',
                             aulasDisponiveis: '0',
                             ultimoAcesso: 'Nunca',
@@ -957,7 +1007,7 @@
                         arquivosAcesso = [];
                         entrarNaPlataforma();
                     } else {
-                        mostrarErro('Erro de conexão. Verifique sua senha e tente novamente.');
+                        mostrarErro('Senha incorreta. A senha é o código do usuário + 1125');
                     }
                 })
                 .finally(() => {
@@ -1067,7 +1117,10 @@
                 document.getElementById('platform-container').style.display = 'none';
                 document.getElementById('login-container').style.display = 'block';
                 document.getElementById('input-senha').value = '';
-                document.getElementById('input-codigo').value = '';
+                document.getElementById('select-usuario').selectedIndex = 0;
+                
+                // Recarregar lista de usuários (caso tenha sido atualizada)
+                carregarListaUsuarios();
             }
         }
 
