@@ -844,6 +844,71 @@
             });
         });
 
+        // ✅ FUNÇÃO PARA ATUALIZAR DADOS NA PLANILHA
+        function atualizarDadosUsuario(dados) {
+            if (!usuarioLogado || !usuarioLogado.codigo) {
+                console.error('Usuário não logado para atualizar dados');
+                return;
+            }
+            
+            const payload = {
+                tipo: 'usuarios',
+                codigo: usuarioLogado.codigo,
+                ...dados
+            };
+            
+            console.log('Enviando dados para API:', payload);
+            
+            fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "ok") {
+                    console.log('✅ Dados atualizados na planilha:', dados);
+                } else {
+                    console.error('❌ Erro ao atualizar dados:', data.mensagem);
+                }
+            })
+            .catch(err => {
+                console.error('❌ Erro na requisição:', err);
+                // Fallback: tentar com ContentService
+                atualizarDadosFallback(payload);
+            });
+        }
+
+        // Fallback caso o primeiro método falhe
+        function atualizarDadosFallback(payload) {
+            const params = new URLSearchParams();
+            params.append('tipo', 'usuarios');
+            params.append('codigo', payload.codigo);
+            
+            if (payload['aulas concluídas']) {
+                params.append('aulas concluídas', payload['aulas concluídas']);
+            }
+            if (payload['aulas disponíveis']) {
+                params.append('aulas disponíveis', payload['aulas disponíveis']);
+            }
+            if (payload['ultimo acesso']) {
+                params.append('ultimo acesso', payload['ultimo acesso']);
+            }
+            
+            fetch(`${API_URL}?${params.toString()}`, {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Dados atualizados (fallback):', data);
+            })
+            .catch(err => {
+                console.error('Erro no fallback:', err);
+            });
+        }
+
         function fazerLogin() {
             const codigo = document.getElementById('input-codigo').value.trim();
             const senha = document.getElementById('input-senha').value;
@@ -910,8 +975,28 @@
             document.getElementById('login-container').style.display = 'none';
             document.getElementById('platform-container').style.display = 'block';
             
+            // ✅ ATUALIZA ÚLTIMO ACESSO NA PLANILHA
+            const dataAtual = new Date();
+            const dataFormatada = formatarDataRondonia(dataAtual);
+            
+            atualizarDadosUsuario({
+                'ultimo acesso': dataFormatada
+            });
+            
             carregarAulas();
             document.getElementById('buscar-aula').addEventListener('input', filtrarAulas);
+        }
+
+        // ✅ FUNÇÃO PARA FORMATAR DATA NO PADRÃO RONDÔNIA
+        function formatarDataRondonia(data) {
+            const dia = String(data.getDate()).padStart(2, '0');
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const ano = data.getFullYear();
+            const horas = String(data.getHours()).padStart(2, '0');
+            const minutos = String(data.getMinutes()).padStart(2, '0');
+            const segundos = String(data.getSeconds()).padStart(2, '0');
+            
+            return `${dia}/${mes}/${ano} ${horas}:${minutos}:${segundos}`;
         }
 
         function abrirAcessos() {
@@ -1004,6 +1089,14 @@
                     if (data.dados && data.dados.length > 0) {
                         processarDadosGoogleSheets(data.dados);
                         atualizarEstatisticas();
+                        
+                        // ✅ ATUALIZA AULAS DISPONÍVEIS NA PLANILHA
+                        const totalAulas = todasAulas.length;
+                        if (totalAulas > 0) {
+                            atualizarDadosUsuario({
+                                'aulas disponíveis': totalAulas.toString()
+                            });
+                        }
                     } else {
                         document.getElementById('lista-categorias').innerHTML = 
                             '<div class="loading">Nenhuma aula encontrada na planilha</div>';
@@ -1245,6 +1338,15 @@
                 if (progressoAulas[aulaAtual.nome]) {
                     progressoAulas[aulaAtual.nome].percentual = 100;
                 }
+                
+                // ✅ ATUALIZA AULAS CONCLUÍDAS NA PLANILHA
+                const totalConcluidas = aulasConcluidas.length;
+                const totalDisponiveis = todasAulas.length;
+                
+                atualizarDadosUsuario({
+                    'aulas concluídas': totalConcluidas.toString(),
+                    'aulas disponíveis': totalDisponiveis.toString()
+                });
                 
                 const btnConcluir = document.getElementById('btn-concluir');
                 btnConcluir.textContent = '✅ Concluída!';
