@@ -73,13 +73,18 @@ function atualizarDadosUsuario(dados) {
 function registrarLogAcesso(arquivo) {
     if (!usuarioLogado || !usuarioLogado.codigo) return;
     
+    // ✅ CORRIGIDO: Pegar data/hora atual do frontend
+    const dataAtual = new Date();
+    const dataFormatada = formatarDataRondonia(dataAtual);
+    
     const dadosLog = {
-        tipo: 'logs',
+        tipo: 'logs', // Para a API saber que é log
         codigo: usuarioLogado.codigo,
         apelido: usuarioLogado.apelido,
         acessou: arquivo.nome,
         local: arquivo.link,
-        tipo: arquivo.tipo && arquivo.tipo.toLowerCase() === 'download' ? 'download' : 'link'
+        tipoArquivo: arquivo.tipo && arquivo.tipo.toLowerCase() === 'download' ? 'download' : 'link', // ✅ Nome diferente para evitar conflito
+        'dh. acesso': dataFormatada // ✅ ENVIAR DATA/HORA DO FRONTEND
     };
     
     const params = new URLSearchParams();
@@ -88,7 +93,8 @@ function registrarLogAcesso(arquivo) {
     params.append('apelido', dadosLog.apelido);
     params.append('acessou', dadosLog.acessou);
     params.append('local', dadosLog.local);
-    params.append('tipo', dadosLog.tipo);
+    params.append('tipo', dadosLog.tipoArquivo); // ✅ Enviar tipo correto
+    params.append('dh. acesso', dadosLog['dh. acesso']); // ✅ ENVIAR DATA/HORA
     
     fetch(`${API_URL}?${params.toString()}`)
         .then(response => response.json())
@@ -103,10 +109,21 @@ function registrarLogAcesso(arquivo) {
 }
 
 function registrarLogViaPOST(dadosLog) {
+    // ✅ CORRIGIDO: Preparar dados corretos para POST
+    const dadosParaEnviar = {
+        tipo: 'logs',
+        codigo: dadosLog.codigo,
+        apelido: dadosLog.apelido,
+        acessou: dadosLog.acessou,
+        local: dadosLog.local,
+        tipo: dadosLog.tipoArquivo, // ✅ Usar tipo correto
+        'dh. acesso': dadosLog['dh. acesso'] // ✅ ENVIAR DATA/HORA NO POST TAMBÉM
+    };
+    
     fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dadosLog)
+        body: JSON.stringify(dadosParaEnviar)
     });
 }
 
