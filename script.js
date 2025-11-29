@@ -1,0 +1,674 @@
+const API_URL = "https://script.google.com/macros/s/AKfycbzVX2mrsSyf-jLZRsW8YzoX6TM9XQ5yJ1Ry-Gw3b_bQ_K3d682_jwr4LXteIR6YmHLkRg/exec";
+const API_AULAS = "https://script.google.com/macros/s/AKfycbzVX2mrsSyf-jLZRsW8YzoX6TM9XQ5yJ1Ry-Gw3b_bQ_K3d682_jwr4LXteIR6YmHLkRg/exec";
+
+let usuarioLogado = null;
+let todasAulas = [];
+let aulasPorCategoria = {};
+let aulaAtual = null;
+let categoriasAbertas = {};
+let arquivosAcesso = [];
+let progressoAulas = {};
+let aulasConcluidas = [];
+let listaUsuarios = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    carregarListaUsuarios();
+    
+    document.getElementById('input-senha').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') fazerLogin();
+    });
+    
+    document.getElementById('select-usuario').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') fazerLogin();
+    });
+});
+
+function carregarListaUsuarios() {
+    const selectUsuario = document.getElementById('select-usuario');
+    selectUsuario.innerHTML = '<option value="">Carregando usuários...</option>';
+    
+    fetch(`${API_URL}?tipo=usuarios`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "ok" && data.dados && data.dados.length > 0) {
+                listaUsuarios = data.dados;
+                const usuariosComAcesso = listaUsuarios.filter(usuario => {
+                    const temAcesso = usuario['acesso treinamento'] && 
+                                    usuario['acesso treinamento'].toString().toLowerCase() === 'sim';
+                    return usuario.codigo && usuario.apelido && temAcesso;
+                });
+                
+                selectUsuario.innerHTML = '<option value="">Selecione seu usuário</option>';
+                usuariosComAcesso.forEach(usuario => {
+                    const option = document.createElement('option');
+                    option.value = usuario.codigo;
+                    option.textContent = usuario.apelido;
+                    selectUsuario.appendChild(option);
+                });
+            }
+        })
+        .catch(() => {
+            selectUsuario.innerHTML = '<option value="">Erro ao carregar usuários</option>';
+        });
+}
+
+function atualizarDadosUsuario(dados) {
+    if (!usuarioLogado || !usuarioLogado.codigo) return;
+    
+    const payload = {
+        tipo: 'usuarios',
+        codigo: usuarioLogado.codigo,
+        ...dados
+    };
+    
+    fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }).catch(() => {
+        atualizarDadosFallback(payload);
+    });
+}
+
+function registrarLogAcesso(arquivo) {
+    if (!usuarioLogado || !usuarioLogado.codigo) return;
+    
+    const dadosLog = {
+        tipo: 'logs',
+        codigo: usuarioLogado.codigo,
+        apelido: usuarioLogado.apelido,
+        acessou: arquivo.nome,
+        local: arquivo.link,
+        tipo: arquivo.tipo && arquivo.tipo.toLowerCase() === 'download' ? 'download' : 'link'
+    };
+    
+    const params = new URLSearchParams();
+    params.append('tipo', 'logs');
+    params.append('codigo', dadosLog.codigo);
+    params.append('apelido', dadosLog.apelido);
+    params.append('acessou', dadosLog.acessou);
+    params.append('local', dadosLog.local);
+    params.append('tipo', dadosLog.tipo);
+    
+    fetch(`${API_URL}?${params.toString()}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status !== "ok") {
+                registrarLogViaPOST(dadosLog);
+            }
+        })
+        .catch(() => {
+            registrarLogViaPOST(dadosLog);
+        });
+}
+
+function registrarLogViaPOST(dadosLog) {
+    fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dadosLog)
+    });
+}
+
+function abrirLinkComLog(arquivoNome, arquivoLink, arquivoTipo, event) {
+    event.preventDefault();
+    
+    const arquivo = {
+        nome: arquivoNome,
+        link: arquivoLink,
+        tipo: arquivoTipo
+    };
+    
+    registrarLogAcesso(arquivo);
+    
+    setTimeout(() => {
+        window.open(arquivoLink, '_blank');
+        fecharAcessos();
+    }, 500);
+}
+
+function atualizarDadosFallback(payload) {
+    const params = new URLSearchParams();
+    params.append('tipo', 'usuarios');
+    params.append('codigo', payload.codigo);
+    
+    if (payload['aulas concluídas']) params.append('aulas concluídas', payload['aulas concluídas']);
+    if (payload['aulas disponíveis']) params.append('aulas disponíveis', payload['aulas disponíveis']);
+    if (payload['ultimo acesso']) params.append('ultimo acesso', payload['ultimo acesso']);
+    
+    fetch(`${API_URL}?${params.toString()}`, { method: 'GET' });
+}
+
+function fazerLogin() {
+    const selectUsuario = document.getElementById('select-usuario');
+    const codigo = selectUsuario.value;
+    const senha = document.getElementById('input-senha').value;
+    
+    if (!codigo) {
+        mostrarErro('Selecione um usuário');
+        return;
+    }
+    
+    if (!senha) {
+        mostrarErro('Digite a senha');
+        return;
+    }
+    
+    document.getElementById('btn-login').style.display = 'none';
+    document.getElementById('login-loading').style.display = 'block';
+    
+    const urlLogin = `${API_URL}?codigo=${codigo}&senha=${senha}`;
+    
+    fetch(urlLogin)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "ok") {
+                usuarioLogado = data.usuario;
+                arquivosAcesso = data.arquivosAcesso || [];
+                entrarNaPlataforma();
+            } else {
+                mostrarErro(data.mensagem || 'Erro no login');
+            }
+        })
+        .catch(() => {
+            const senhaEsperada = (parseInt(codigo) + 1125).toString();
+            if (senha === senhaEsperada) {
+                const usuarioEncontrado = listaUsuarios.find(u => u.codigo == codigo);
+                usuarioLogado = { 
+                    codigo: codigo, 
+                    apelido: usuarioEncontrado ? usuarioEncontrado.apelido : `Usuário ${codigo}`,
+                    aulasConcluidas: '0',
+                    aulasDisponiveis: '0',
+                    ultimoAcesso: 'Nunca',
+                    acessoTreinamento: true
+                };
+                arquivosAcesso = [];
+                entrarNaPlataforma();
+            } else {
+                mostrarErro('Senha incorreta');
+            }
+        })
+        .finally(() => {
+            document.getElementById('btn-login').style.display = 'block';
+            document.getElementById('login-loading').style.display = 'none';
+        });
+}
+
+function entrarNaPlataforma() {
+    carregarDadosUsuario();
+    
+    document.getElementById('user-name').textContent = usuarioLogado.apelido;
+    document.getElementById('user-avatar').textContent = usuarioLogado.apelido.charAt(0);
+    
+    document.getElementById('login-container').style.display = 'none';
+    document.getElementById('platform-container').style.display = 'block';
+    
+    const dataAtual = new Date();
+    const dataFormatada = formatarDataRondonia(dataAtual);
+    
+    atualizarDadosUsuario({ 'ultimo acesso': dataFormatada });
+    
+    carregarAulas();
+    document.getElementById('buscar-aula').addEventListener('input', filtrarAulas);
+}
+
+function formatarDataRondonia(data) {
+    const dia = String(data.getDate()).padStart(2, '0');
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const ano = data.getFullYear();
+    const horas = String(data.getHours()).padStart(2, '0');
+    const minutos = String(data.getMinutes()).padStart(2, '0');
+    const segundos = String(data.getSeconds()).padStart(2, '0');
+    
+    return `${dia}/${mes}/${ano} ${horas}:${minutos}:${segundos}`;
+}
+
+function abrirAcessos() {
+    const modal = document.getElementById('acessos-modal');
+    const lista = document.getElementById('acessos-lista');
+    
+    if (arquivosAcesso.length === 0) {
+        lista.innerHTML = '<div class="sem-acessos"><h3>Nenhum acesso disponível</h3><p>Você não tem arquivos liberados no momento.</p></div>';
+    } else {
+        let html = '';
+        arquivosAcesso.forEach(arquivo => {
+            const isDownload = arquivo.tipo && arquivo.tipo.toLowerCase() === 'download';
+            const botaoClass = isDownload ? 'arquivo-download' : 'arquivo-link';
+            const botaoText = isDownload ? '📥 Download' : '🔗 Acessar';
+            
+            html += `
+                <div class="arquivo-item">
+                    <div class="arquivo-info">
+                        <div class="arquivo-nome">${arquivo.nome}</div>
+                        <div class="arquivo-tipo">${isDownload ? 'Download' : 'Link'}</div>
+                    </div>
+                    ${arquivo.link ? `
+                        <a href="${arquivo.link}" class="${botaoClass}" onclick="abrirLinkComLog('${arquivo.nome.replace(/'/g, "\\'")}', '${arquivo.link}', '${arquivo.tipo || 'link'}', event)">${botaoText}</a>
+                    ` : '<span style="color: #95a5a6;">Sem link</span>'}
+                </div>
+            `;
+        });
+        lista.innerHTML = html;
+    }
+    
+    modal.style.display = 'block';
+}
+
+function fecharAcessos() {
+    document.getElementById('acessos-modal').style.display = 'none';
+}
+
+function carregarDadosUsuario() {
+    const dados = localStorage.getItem(`progresso_${usuarioLogado.codigo}`);
+    if (dados) {
+        const parsed = JSON.parse(dados);
+        progressoAulas = parsed.progressoAulas || {};
+        aulasConcluidas = parsed.aulasConcluidas || [];
+        categoriasAbertas = parsed.categoriasAbertas || {};
+    }
+}
+
+function salvarDadosUsuario() {
+    const dados = {
+        progressoAulas: progressoAulas,
+        aulasConcluidas: aulasConcluidas,
+        categoriasAbertas: categoriasAbertas
+    };
+    localStorage.setItem(`progresso_${usuarioLogado.codigo}`, JSON.stringify(dados));
+}
+
+function fazerLogout() {
+    if (confirm('Deseja realmente sair?')) {
+        usuarioLogado = null;
+        arquivosAcesso = [];
+        document.getElementById('platform-container').style.display = 'none';
+        document.getElementById('login-container').style.display = 'block';
+        document.getElementById('input-senha').value = '';
+        document.getElementById('select-usuario').selectedIndex = 0;
+        carregarListaUsuarios();
+    }
+}
+
+function mostrarErro(mensagem) {
+    const errorDiv = document.getElementById('error-message');
+    errorDiv.textContent = mensagem;
+    errorDiv.style.display = 'block';
+    setTimeout(() => errorDiv.style.display = 'none', 5000);
+}
+
+function carregarAulas() {
+    fetch(API_AULAS)
+        .then(response => response.json())
+        .then(data => {
+            if (data.dados && data.dados.length > 0) {
+                processarDadosGoogleSheets(data.dados);
+                atualizarEstatisticas();
+                const totalAulas = todasAulas.length;
+                if (totalAulas > 0) {
+                    atualizarDadosUsuario({ 'aulas disponíveis': totalAulas.toString() });
+                }
+            }
+        })
+        .catch(() => {
+            document.getElementById('lista-categorias').innerHTML = '<div class="loading">Erro ao carregar aulas</div>';
+        });
+}
+
+function processarDadosGoogleSheets(dados) {
+    todasAulas = [];
+    aulasPorCategoria = {};
+    
+    dados.forEach(item => {
+        const categoria = item.categoria || item[""] || "GERAL";
+        const nome = item.nome || "Aula sem nome";
+        const url = item.url || "";
+        let tipo = item.tipo || "video";
+        
+        tipo = tipo.toLowerCase();
+        if (tipo.includes('vídeo')) tipo = 'video';
+        
+        if (url && url.includes('drive.google.com') && (tipo === 'video' || tipo === 'pdf')) {
+            if (!aulasPorCategoria[categoria]) aulasPorCategoria[categoria] = [];
+            
+            const aula = {
+                nome: nome,
+                url: converterUrlParaEmbed(url),
+                categoria: categoria,
+                tipo: tipo
+            };
+            
+            todasAulas.push(aula);
+            aulasPorCategoria[categoria].push(aula);
+        }
+    });
+    
+    renderizarCategorias();
+}
+
+function converterUrlParaEmbed(url) {
+    if (url.includes('/file/d/')) {
+        const videoId = url.split('/file/d/')[1].split('/')[0];
+        return `https://drive.google.com/file/d/${videoId}/preview`;
+    }
+    return url;
+}
+
+function renderizarCategorias() {
+    const container = document.getElementById('lista-categorias');
+    
+    if (Object.keys(aulasPorCategoria).length === 0) {
+        container.innerHTML = '<div class="loading">Nenhum vídeo encontrado</div>';
+        return;
+    }
+
+    let html = '';
+    for (const [categoria, aulas] of Object.entries(aulasPorCategoria)) {
+        const aulasConcluidasCategoria = aulas.filter(a => aulasConcluidas.includes(a.nome)).length;
+        const progressoCategoria = aulas.length > 0 ? (aulasConcluidasCategoria / aulas.length) * 100 : 0;
+        const categoriaConcluida = progressoCategoria === 100;
+        const categoriaAberta = categoriasAbertas[categoria] && !categoriaConcluida;
+
+        html += `
+            <div class="categoria">
+                <div class="categoria-header ${categoriaAberta ? 'aberta' : ''} ${categoriaConcluida ? 'concluida' : ''}" onclick="toggleCategoria('${categoria}')">
+                    <div>
+                        <div class="categoria-title">${categoria}</div>
+                        <div class="categoria-progress">${aulasConcluidasCategoria}/${aulas.length} concluídas</div>
+                    </div>
+                    <div class="categoria-arrow">▼</div>
+                </div>
+                <div class="aulas-container" id="aulas-${categoria.replace(/\s+/g, '-')}">
+                    ${aulas.map((aula, index) => {
+                        const concluida = aulasConcluidas.includes(aula.nome);
+                        const progresso = progressoAulas[aula.nome] || { tempo: 0, percentual: 0 };
+                        const assistindo = progresso.percentual > 0 && progresso.percentual < 95;
+                        
+                        const classes = [
+                            concluida ? 'assistida' : '',
+                            assistindo ? 'assistindo' : '',
+                            aulaAtual && aula.nome === aulaAtual.nome ? 'ativa' : ''
+                        ].filter(c => c).join(' ');
+                        
+                        const tempoAssistido = formatarTempo(progresso.tempo);
+                        const percentual = progresso.percentual || 0;
+                        
+                        return `
+                        <div class="aula ${classes}" onclick="abrirAula('${aula.nome.replace(/'/g, "\\'")}', '${aula.url}', '${categoria.replace(/'/g, "\\'")}', ${index})">
+                            <div class="aula-status">${concluida ? '✓' : (assistindo ? '▶' : (index + 1))}</div>
+                            <div class="aula-info">
+                                <div class="aula-nome">${aula.nome}</div>
+                                ${percentual > 0 ? `<div class="aula-progresso"><div class="aula-progresso-interno" style="width: ${percentual}%"></div></div>` : ''}
+                            </div>
+                            ${tempoAssistido ? `<div class="aula-tempo">${tempoAssistido}</div>` : ''}
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
+}
+
+function toggleCategoria(categoria) {
+    const categoriaElement = document.querySelector(`[onclick="toggleCategoria('${categoria}')"]`);
+    const aulasContainer = document.getElementById(`aulas-${categoria.replace(/\s+/g, '-')}`);
+    const estaAberta = categoriaElement.classList.contains('aberta');
+    
+    document.querySelectorAll('.categoria-header.aberta').forEach(header => {
+        const outrasCategoria = header.getAttribute('onclick').match(/toggleCategoria\('([^']+)'\)/)[1];
+        const outrasAulas = document.getElementById(`aulas-${outrasCategoria.replace(/\s+/g, '-')}`);
+        
+        if (outrasAulas) {
+            header.classList.remove('aberta');
+            outrasAulas.style.display = 'none';
+            categoriasAbertas[outrasCategoria] = false;
+        }
+    });
+    
+    if (!estaAberta) {
+        categoriaElement.classList.add('aberta');
+        aulasContainer.style.display = 'grid';
+        categoriasAbertas[categoria] = true;
+    }
+    
+    salvarDadosUsuario();
+}
+
+function abrirAula(nome, url, categoria, index) {
+    aulaAtual = { nome, url, categoria, index };
+    
+    document.querySelectorAll('.aula').forEach(a => a.classList.remove('ativa'));
+    event.currentTarget.classList.add('ativa');
+    
+    document.getElementById('modal-title').textContent = nome;
+    document.getElementById('video-modal').style.display = 'block';
+    
+    const iframe = document.getElementById('modal-video');
+    iframe.src = url;
+    
+    iniciarMonitoramentoProgresso();
+    atualizarBotoesNavegacao();
+    atualizarBotaoConclusao();
+}
+
+function fecharModal() {
+    document.getElementById('video-modal').style.display = 'none';
+    document.getElementById('modal-video').src = '';
+    
+    pararMonitoramentoProgresso();
+    renderizarCategorias();
+    atualizarEstatisticas();
+    salvarDadosUsuario();
+    verificarCategoriasConcluidas();
+}
+
+function verificarCategoriasConcluidas() {
+    for (const [categoria, aulas] of Object.entries(aulasPorCategoria)) {
+        const aulasConcluidasCategoria = aulas.filter(a => aulasConcluidas.includes(a.nome)).length;
+        const progressoCategoria = aulas.length > 0 ? (aulasConcluidasCategoria / aulas.length) * 100 : 0;
+        
+        if (progressoCategoria === 100) {
+            const categoriaElement = document.querySelector(`[onclick="toggleCategoria('${categoria}')"]`);
+            const aulasContainer = document.getElementById(`aulas-${categoria.replace(/\s+/g, '-')}`);
+            
+            if (categoriaElement && aulasContainer) {
+                categoriaElement.classList.remove('aberta');
+                aulasContainer.style.display = 'none';
+                categoriasAbertas[categoria] = false;
+            }
+        }
+    }
+}
+
+function iniciarMonitoramentoProgresso() {
+    if (window.progressInterval) clearInterval(window.progressInterval);
+    
+    window.progressInterval = setInterval(() => {
+        if (aulaAtual) {
+            const progressoAtual = progressoAulas[aulaAtual.nome] || { tempo: 0, percentual: 0 };
+            
+            progressoAtual.tempo += 10;
+            progressoAtual.percentual = Math.min(100, progressoAtual.percentual + 5);
+            
+            progressoAulas[aulaAtual.nome] = progressoAtual;
+            
+            if (progressoAtual.percentual >= 95 && !aulasConcluidas.includes(aulaAtual.nome)) {
+                marcarComoConcluida();
+            }
+        }
+    }, 10000);
+}
+
+function pararMonitoramentoProgresso() {
+    if (window.progressInterval) {
+        clearInterval(window.progressInterval);
+        window.progressInterval = null;
+    }
+}
+
+function alternarConclusao() {
+    if (!aulaAtual) return;
+    
+    const btnConcluir = document.getElementById('btn-concluir');
+    const jaConcluida = aulasConcluidas.includes(aulaAtual.nome);
+    
+    if (jaConcluida) {
+        const index = aulasConcluidas.indexOf(aulaAtual.nome);
+        aulasConcluidas.splice(index, 1);
+        
+        if (progressoAulas[aulaAtual.nome]) progressoAulas[aulaAtual.nome].percentual = 0;
+        
+        btnConcluir.textContent = '✅ Marcar como Concluída';
+        btnConcluir.className = 'btn btn-primary';
+    } else {
+        aulasConcluidas.push(aulaAtual.nome);
+        
+        if (progressoAulas[aulaAtual.nome]) progressoAulas[aulaAtual.nome].percentual = 100;
+        
+        btnConcluir.textContent = '↶ Desmarcar Conclusão';
+        btnConcluir.className = 'btn btn-warning';
+    }
+    
+    const totalConcluidas = aulasConcluidas.length;
+    const totalDisponiveis = todasAulas.length;
+    
+    atualizarDadosUsuario({
+        'aulas concluídas': totalConcluidas.toString(),
+        'aulas disponíveis': totalDisponiveis.toString()
+    });
+    
+    renderizarCategorias();
+    atualizarEstatisticas();
+    salvarDadosUsuario();
+}
+
+function atualizarBotaoConclusao() {
+    if (!aulaAtual) return;
+    
+    const btnConcluir = document.getElementById('btn-concluir');
+    const jaConcluida = aulasConcluidas.includes(aulaAtual.nome);
+    
+    if (jaConcluida) {
+        btnConcluir.textContent = '↶ Desmarcar Conclusão';
+        btnConcluir.className = 'btn btn-warning';
+    } else {
+        btnConcluir.textContent = '✅ Marcar como Concluída';
+        btnConcluir.className = 'btn btn-primary';
+    }
+}
+
+function proximaAula() {
+    if (!aulaAtual) return;
+    
+    const aulasCategoria = aulasPorCategoria[aulaAtual.categoria];
+    const proximaIndex = aulaAtual.index + 1;
+    
+    if (proximaIndex < aulasCategoria.length) {
+        const proximaAula = aulasCategoria[proximaIndex];
+        abrirAula(proximaAula.nome, proximaAula.url, aulaAtual.categoria, proximaIndex);
+    }
+}
+
+function aulaAnterior() {
+    if (!aulaAtual) return;
+    
+    const aulasCategoria = aulasPorCategoria[aulaAtual.categoria];
+    const anteriorIndex = aulaAtual.index - 1;
+    
+    if (anteriorIndex >= 0) {
+        const aulaAnterior = aulasCategoria[anteriorIndex];
+        abrirAula(aulaAnterior.nome, aulaAnterior.url, aulaAtual.categoria, anteriorIndex);
+    }
+}
+
+function atualizarBotoesNavegacao() {
+    if (!aulaAtual) return;
+    
+    const aulasCategoria = aulasPorCategoria[aulaAtual.categoria];
+    const btnAnterior = document.getElementById('btn-anterior');
+    const btnProximo = document.getElementById('btn-proximo');
+    
+    btnAnterior.disabled = aulaAtual.index === 0;
+    btnProximo.disabled = aulaAtual.index === aulasCategoria.length - 1;
+}
+
+function atualizarEstatisticas() {
+    const totalAulas = todasAulas.length;
+    const concluidas = aulasConcluidas.length;
+    const progresso = totalAulas > 0 ? (concluidas / totalAulas) * 100 : 0;
+    
+    const assistindo = Object.values(progressoAulas).filter(p => p.percentual > 5 && p.percentual < 95).length;
+    
+    document.getElementById('progresso-geral').style.width = `${progresso}%`;
+    document.getElementById('texto-progresso').textContent = `${Math.round(progresso)}% concluído`;
+    document.getElementById('total-aulas').textContent = totalAulas;
+    document.getElementById('aulas-concluidas').textContent = concluidas;
+    document.getElementById('aulas-assistindo').textContent = assistindo;
+}
+
+function filtrarAulas() {
+    const termo = document.getElementById('buscar-aula').value.toLowerCase();
+    
+    if (termo === '') {
+        renderizarCategorias();
+        return;
+    }
+    
+    const aulasFiltradas = todasAulas.filter(aula => 
+        aula.nome.toLowerCase().includes(termo) || 
+        aula.categoria.toLowerCase().includes(termo)
+    );
+    
+    const aulasFiltradasPorCategoria = {};
+    aulasFiltradas.forEach(aula => {
+        if (!aulasFiltradasPorCategoria[aula.categoria]) aulasFiltradasPorCategoria[aula.categoria] = [];
+        aulasFiltradasPorCategoria[aula.categoria].push(aula);
+    });
+    
+    aulasPorCategoria = aulasFiltradasPorCategoria;
+    renderizarCategorias();
+}
+
+function formatarTempo(segundos) {
+    if (!segundos || segundos < 30) return '';
+    const minutos = Math.floor(segundos / 60);
+    const segs = segundos % 60;
+    return `${minutos}:${segs.toString().padStart(2, '0')}`;
+}
+
+function marcarComoConcluida() {
+    if (!aulaAtual || aulasConcluidas.includes(aulaAtual.nome)) return;
+    
+    aulasConcluidas.push(aulaAtual.nome);
+    
+    if (progressoAulas[aulaAtual.nome]) progressoAulas[aulaAtual.nome].percentual = 100;
+    
+    const totalConcluidas = aulasConcluidas.length;
+    const totalDisponiveis = todasAulas.length;
+    
+    atualizarDadosUsuario({
+        'aulas concluídas': totalConcluidas.toString(),
+        'aulas disponíveis': totalDisponiveis.toString()
+    });
+    
+    atualizarBotaoConclusao();
+    renderizarCategorias();
+    atualizarEstatisticas();
+    salvarDadosUsuario();
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        fecharModal();
+        fecharAcessos();
+    }
+});
+
+document.getElementById('video-modal').addEventListener('click', function(e) {
+    if (e.target === this) fecharModal();
+});
+
+document.getElementById('acessos-modal').addEventListener('click', function(e) {
+    if (e.target === this) fecharAcessos();
+});
