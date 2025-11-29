@@ -1,5 +1,5 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbz0PNUUsuWEal5Js5JWtoDme066tCjhoTA4GYQEsTxAvzVHg74pst5_Bjc6atLd3cODlQ/exec";
-const API_AULAS = "https://script.google.com/macros/s/AKfycbz0PNUUsuWEal5Js5JWtoDme066tCjhoTA4GYQEsTxAvzVHg74pst5_Bjc6atLd3cODlQ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxaN2gPY_jl4fw-0kp14jub_CqylA_j1JClnRKxr5WVCTMVOEh68WXEyWIQkfde2FdgoQ/exec";
+const API_AULAS = "https://script.google.com/macros/s/AKfycbxaN2gPY_jl4fw-0kp14jub_CqylA_j1JClnRKxr5WVCTMVOEh68WXEyWIQkfde2FdgoQ/exec";
 
 let usuarioLogado = null;
 let todasAulas = [];
