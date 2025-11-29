@@ -116,6 +116,15 @@
         background: #219a52;
     }
     
+    .btn-warning {
+        background: var(--warning);
+        color: white;
+    }
+    
+    .btn-warning:hover {
+        background: #e67e22;
+    }
+    
     .error-message {
         background: #ffeaa7;
         color: #d63031;
@@ -483,6 +492,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 10px;
     }
     
     /* Modal de Acessos */
@@ -792,7 +802,7 @@
                     <button class="btn-outline" onclick="aulaAnterior()" id="btn-anterior">
                         ← Aula Anterior
                     </button>
-                    <button class="btn btn-primary" onclick="marcarComoConcluida()" id="btn-concluir">
+                    <button class="btn btn-primary" onclick="alternarConclusao()" id="btn-concluir">
                         ✅ Marcar como Concluída
                     </button>
                     <button class="btn-outline" onclick="proximaAula()" id="btn-proximo">
@@ -1324,6 +1334,7 @@
             
             iniciarMonitoramentoProgresso();
             atualizarBotoesNavegacao();
+            atualizarBotaoConclusao();
         }
 
         function fecharModal() {
@@ -1382,34 +1393,73 @@
             }
         }
 
-        function marcarComoConcluida() {
+        // ✅ FUNÇÃO CORRIGIDA: Alternar entre marcar e desmarcar como concluída
+        function alternarConclusao() {
             if (!aulaAtual) return;
             
-            if (!aulasConcluidas.includes(aulaAtual.nome)) {
+            const btnConcluir = document.getElementById('btn-concluir');
+            const jaConcluida = aulasConcluidas.includes(aulaAtual.nome);
+            
+            if (jaConcluida) {
+                // Desmarcar como concluída
+                const index = aulasConcluidas.indexOf(aulaAtual.nome);
+                aulasConcluidas.splice(index, 1);
+                
+                if (progressoAulas[aulaAtual.nome]) {
+                    progressoAulas[aulaAtual.nome].percentual = 0;
+                }
+                
+                btnConcluir.textContent = '✅ Marcar como Concluída';
+                btnConcluir.className = 'btn btn-primary';
+                btnConcluir.style.background = '';
+                
+                console.log('Aula desmarcada:', aulaAtual.nome);
+            } else {
+                // Marcar como concluída
                 aulasConcluidas.push(aulaAtual.nome);
                 
                 if (progressoAulas[aulaAtual.nome]) {
                     progressoAulas[aulaAtual.nome].percentual = 100;
                 }
                 
-                // ✅ ATUALIZA AULAS CONCLUÍDAS NA PLANILHA
-                const totalConcluidas = aulasConcluidas.length;
-                const totalDisponiveis = todasAulas.length;
+                btnConcluir.textContent = '↶ Desmarcar Conclusão';
+                btnConcluir.className = 'btn btn-warning';
                 
-                atualizarDadosUsuario({
-                    'aulas concluídas': totalConcluidas.toString(),
-                    'aulas disponíveis': totalDisponiveis.toString()
-                });
-                
-                const btnConcluir = document.getElementById('btn-concluir');
-                btnConcluir.textContent = '✅ Concluída!';
-                btnConcluir.style.background = '#27ae60';
-                btnConcluir.disabled = true;
-                
-                setTimeout(() => {
-                    fecharModal();
-                }, 1500);
+                console.log('Aula marcada como concluída:', aulaAtual.nome);
             }
+            
+            // ✅ ATUALIZA AULAS CONCLUÍDAS NA PLANILHA
+            const totalConcluidas = aulasConcluidas.length;
+            const totalDisponiveis = todasAulas.length;
+            
+            atualizarDadosUsuario({
+                'aulas concluídas': totalConcluidas.toString(),
+                'aulas disponíveis': totalDisponiveis.toString()
+            });
+            
+            // Atualiza a interface
+            renderizarCategorias();
+            atualizarEstatisticas();
+            salvarDadosUsuario();
+        }
+
+        // ✅ FUNÇÃO PARA ATUALIZAR O BOTÃO DE CONCLUSÃO
+        function atualizarBotaoConclusao() {
+            if (!aulaAtual) return;
+            
+            const btnConcluir = document.getElementById('btn-concluir');
+            const jaConcluida = aulasConcluidas.includes(aulaAtual.nome);
+            
+            if (jaConcluida) {
+                btnConcluir.textContent = '↶ Desmarcar Conclusão';
+                btnConcluir.className = 'btn btn-warning';
+            } else {
+                btnConcluir.textContent = '✅ Marcar como Concluída';
+                btnConcluir.className = 'btn btn-primary';
+                btnConcluir.style.background = '';
+            }
+            
+            btnConcluir.disabled = false;
         }
 
         function proximaAula() {
