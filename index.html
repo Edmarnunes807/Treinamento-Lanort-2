@@ -1290,33 +1290,37 @@
             container.innerHTML = html;
         }
 
+        // ✅ FUNÇÃO CORRIGIDA: Toggle de categorias
         function toggleCategoria(categoria) {
+            console.log('Toggle categoria:', categoria);
+            
             const categoriaElement = document.querySelector(`[onclick="toggleCategoria('${categoria}')"]`);
             const aulasContainer = document.getElementById(`aulas-${categoria.replace(/\s+/g, '-')}`);
             const estaAberta = categoriaElement.classList.contains('aberta');
             
-            // Fecha todas as outras categorias
+            console.log('Estado atual:', { categoria, estaAberta });
+            
+            // ✅ CORREÇÃO: Fecha TODAS as categorias primeiro
             document.querySelectorAll('.categoria-header.aberta').forEach(header => {
-                if (header !== categoriaElement) {
+                const outrasCategoria = header.getAttribute('onclick').match(/toggleCategoria\('([^']+)'\)/)[1];
+                const outrasAulas = document.getElementById(`aulas-${outrasCategoria.replace(/\s+/g, '-')}`);
+                
+                if (outrasAulas) {
                     header.classList.remove('aberta');
-                    const outrasAulas = header.nextElementSibling;
-                    if (outrasAulas && outrasAulas.classList.contains('aulas-container')) {
-                        outrasAulas.style.display = 'none';
-                    }
+                    outrasAulas.style.display = 'none';
+                    categoriasAbertas[outrasCategoria] = false;
                 }
             });
             
-            // Alterna a categoria atual
-            if (estaAberta) {
-                categoriaElement.classList.remove('aberta');
-                aulasContainer.style.display = 'none';
-                categoriasAbertas[categoria] = false;
-            } else {
+            // ✅ CORREÇÃO: Se a categoria clicada NÃO estava aberta, abre ela
+            if (!estaAberta) {
                 categoriaElement.classList.add('aberta');
                 aulasContainer.style.display = 'grid';
                 categoriasAbertas[categoria] = true;
             }
+            // Se estava aberta, ela já foi fechada no loop acima
             
+            console.log('Estado final categorias abertas:', categoriasAbertas);
             salvarDadosUsuario();
         }
 
