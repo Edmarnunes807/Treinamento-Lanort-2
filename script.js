@@ -1,5 +1,5 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbzVX2mrsSyf-jLZRsW8YzoX6TM9XQ5yJ1Ry-Gw3b_bQ_K3d682_jwr4LXteIR6YmHLkRg/exec";
-const API_AULAS = "https://script.google.com/macros/s/AKfycbzVX2mrsSyf-jLZRsW8YzoX6TM9XQ5yJ1Ry-Gw3b_bQ_K3d682_jwr4LXteIR6YmHLkRg/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbz0PNUUsuWEal5Js5JWtoDme066tCjhoTA4GYQEsTxAvzVHg74pst5_Bjc6atLd3cODlQ/exec";
+const API_AULAS = "https://script.google.com/macros/s/AKfycbz0PNUUsuWEal5Js5JWtoDme066tCjhoTA4GYQEsTxAvzVHg74pst5_Bjc6atLd3cODlQ/exec";
 
 let usuarioLogado = null;
 let todasAulas = [];
@@ -397,26 +397,19 @@ function renderizarCategorias() {
                 <div class="aulas-container" id="aulas-${categoria.replace(/\s+/g, '-')}">
                     ${aulas.map((aula, index) => {
                         const concluida = aulasConcluidas.includes(aula.nome);
-                        const progresso = progressoAulas[aula.nome] || { tempo: 0, percentual: 0 };
-                        const assistindo = progresso.percentual > 0 && progresso.percentual < 95;
                         
+                        // ✅ REMOVIDO: progresso fake e tempo assistido
                         const classes = [
                             concluida ? 'assistida' : '',
-                            assistindo ? 'assistindo' : '',
                             aulaAtual && aula.nome === aulaAtual.nome ? 'ativa' : ''
                         ].filter(c => c).join(' ');
                         
-                        const tempoAssistido = formatarTempo(progresso.tempo);
-                        const percentual = progresso.percentual || 0;
-                        
                         return `
                         <div class="aula ${classes}" onclick="abrirAula('${aula.nome.replace(/'/g, "\\'")}', '${aula.url}', '${categoria.replace(/'/g, "\\'")}', ${index})">
-                            <div class="aula-status">${concluida ? '✓' : (assistindo ? '▶' : (index + 1))}</div>
+                            <div class="aula-status">${concluida ? '✓' : (index + 1)}</div>
                             <div class="aula-info">
                                 <div class="aula-nome">${aula.nome}</div>
-                                ${percentual > 0 ? `<div class="aula-progresso"><div class="aula-progresso-interno" style="width: ${percentual}%"></div></div>` : ''}
                             </div>
-                            ${tempoAssistido ? `<div class="aula-tempo">${tempoAssistido}</div>` : ''}
                         </div>
                         `;
                     }).join('')}
@@ -464,7 +457,7 @@ function abrirAula(nome, url, categoria, index) {
     const iframe = document.getElementById('modal-video');
     iframe.src = url;
     
-    iniciarMonitoramentoProgresso();
+    // ✅ REMOVIDO: Monitoramento de progresso fake
     atualizarBotoesNavegacao();
     atualizarBotaoConclusao();
 }
@@ -473,7 +466,7 @@ function fecharModal() {
     document.getElementById('video-modal').style.display = 'none';
     document.getElementById('modal-video').src = '';
     
-    pararMonitoramentoProgresso();
+    // ✅ REMOVIDO: Parar monitoramento fake
     renderizarCategorias();
     atualizarEstatisticas();
     salvarDadosUsuario();
@@ -498,31 +491,7 @@ function verificarCategoriasConcluidas() {
     }
 }
 
-function iniciarMonitoramentoProgresso() {
-    if (window.progressInterval) clearInterval(window.progressInterval);
-    
-    window.progressInterval = setInterval(() => {
-        if (aulaAtual) {
-            const progressoAtual = progressoAulas[aulaAtual.nome] || { tempo: 0, percentual: 0 };
-            
-            progressoAtual.tempo += 10;
-            progressoAtual.percentual = Math.min(100, progressoAtual.percentual + 5);
-            
-            progressoAulas[aulaAtual.nome] = progressoAtual;
-            
-            if (progressoAtual.percentual >= 95 && !aulasConcluidas.includes(aulaAtual.nome)) {
-                marcarComoConcluida();
-            }
-        }
-    }, 10000);
-}
-
-function pararMonitoramentoProgresso() {
-    if (window.progressInterval) {
-        clearInterval(window.progressInterval);
-        window.progressInterval = null;
-    }
-}
+// ❌ FUNÇÕES REMOVIDAS: iniciarMonitoramentoProgresso() e pararMonitoramentoProgresso()
 
 function alternarConclusao() {
     if (!aulaAtual) return;
@@ -531,22 +500,23 @@ function alternarConclusao() {
     const jaConcluida = aulasConcluidas.includes(aulaAtual.nome);
     
     if (jaConcluida) {
+        // Desmarcar conclusão
         const index = aulasConcluidas.indexOf(aulaAtual.nome);
         aulasConcluidas.splice(index, 1);
         
-        if (progressoAulas[aulaAtual.nome]) progressoAulas[aulaAtual.nome].percentual = 0;
-        
+        // ✅ REMOVIDO: Reset de progresso fake
         btnConcluir.textContent = '✅ Marcar como Concluída';
         btnConcluir.className = 'btn btn-primary';
     } else {
+        // Marcar como concluída
         aulasConcluidas.push(aulaAtual.nome);
         
-        if (progressoAulas[aulaAtual.nome]) progressoAulas[aulaAtual.nome].percentual = 100;
-        
+        // ✅ REMOVIDO: Setar progresso fake para 100%
         btnConcluir.textContent = '↶ Desmarcar Conclusão';
         btnConcluir.className = 'btn btn-warning';
     }
     
+    // ✅ AGORA COM VALIDAÇÃO NO BACKEND
     const totalConcluidas = aulasConcluidas.length;
     const totalDisponiveis = todasAulas.length;
     
@@ -615,13 +585,12 @@ function atualizarEstatisticas() {
     const concluidas = aulasConcluidas.length;
     const progresso = totalAulas > 0 ? (concluidas / totalAulas) * 100 : 0;
     
-    const assistindo = Object.values(progressoAulas).filter(p => p.percentual > 5 && p.percentual < 95).length;
-    
+    // ✅ REMOVIDO: Contagem de "assistindo" baseada em progresso fake
     document.getElementById('progresso-geral').style.width = `${progresso}%`;
     document.getElementById('texto-progresso').textContent = `${Math.round(progresso)}% concluído`;
     document.getElementById('total-aulas').textContent = totalAulas;
     document.getElementById('aulas-concluidas').textContent = concluidas;
-    document.getElementById('aulas-assistindo').textContent = assistindo;
+    document.getElementById('aulas-assistindo').textContent = '0'; // Sem progresso fake
 }
 
 function filtrarAulas() {
@@ -647,33 +616,9 @@ function filtrarAulas() {
     renderizarCategorias();
 }
 
-function formatarTempo(segundos) {
-    if (!segundos || segundos < 30) return '';
-    const minutos = Math.floor(segundos / 60);
-    const segs = segundos % 60;
-    return `${minutos}:${segs.toString().padStart(2, '0')}`;
-}
+// ❌ FUNÇÃO REMOVIDA: formatarTempo() - não é mais necessária
 
-function marcarComoConcluida() {
-    if (!aulaAtual || aulasConcluidas.includes(aulaAtual.nome)) return;
-    
-    aulasConcluidas.push(aulaAtual.nome);
-    
-    if (progressoAulas[aulaAtual.nome]) progressoAulas[aulaAtual.nome].percentual = 100;
-    
-    const totalConcluidas = aulasConcluidas.length;
-    const totalDisponiveis = todasAulas.length;
-    
-    atualizarDadosUsuario({
-        'aulas concluídas': totalConcluidas.toString(),
-        'aulas disponíveis': totalDisponiveis.toString()
-    });
-    
-    atualizarBotaoConclusao();
-    renderizarCategorias();
-    atualizarEstatisticas();
-    salvarDadosUsuario();
-}
+// ❌ FUNÇÃO REMOVIDA: marcarComoConcluida() - não é mais usada
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
