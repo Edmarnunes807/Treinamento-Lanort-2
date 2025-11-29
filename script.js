@@ -171,22 +171,8 @@ function fazerLogin() {
             }
         })
         .catch(() => {
-            const senhaEsperada = (parseInt(codigo) + 1125).toString();
-            if (senha === senhaEsperada) {
-                const usuarioEncontrado = listaUsuarios.find(u => u.codigo == codigo);
-                usuarioLogado = { 
-                    codigo: codigo, 
-                    apelido: usuarioEncontrado ? usuarioEncontrado.apelido : `Usuário ${codigo}`,
-                    aulasConcluidas: '0',
-                    aulasDisponiveis: '0',
-                    ultimoAcesso: 'Nunca',
-                    acessoTreinamento: true
-                };
-                arquivosAcesso = [];
-                entrarNaPlataforma();
-            } else {
-                mostrarErro('Senha incorreta');
-            }
+            // ✅ MODIFICAÇÃO DE SEGURANÇA: Removido o fallback inseguro
+            mostrarErro('Erro de conexão com o servidor');
         })
         .finally(() => {
             document.getElementById('btn-login').style.display = 'block';
@@ -259,12 +245,34 @@ function fecharAcessos() {
 }
 
 function carregarDadosUsuario() {
-    const dados = localStorage.getItem(`progresso_${usuarioLogado.codigo}`);
-    if (dados) {
-        const parsed = JSON.parse(dados);
-        progressoAulas = parsed.progressoAulas || {};
-        aulasConcluidas = parsed.aulasConcluidas || [];
-        categoriasAbertas = parsed.categoriasAbertas || {};
+    const dadosCriptografados = localStorage.getItem(`progresso_${usuarioLogado.codigo}`);
+    if (dadosCriptografados) {
+        try {
+            const dados = JSON.parse(atob(dadosCriptografados));
+            if (dados && (Date.now() - (dados.timestamp || 0) < 30 * 24 * 60 * 60 * 1000)) {
+                progressoAulas = dados.progressoAulas || {};
+                aulasConcluidas = dados.aulasConcluidas || [];
+                categoriasAbertas = dados.categoriasAbertas || {};
+            }
+        } catch (e) {
+            // Dados corrompidos - usar fallback normal
+            const dados = localStorage.getItem(`progresso_${usuarioLogado.codigo}`);
+            if (dados) {
+                const parsed = JSON.parse(dados);
+                progressoAulas = parsed.progressoAulas || {};
+                aulasConcluidas = parsed.aulasConcluidas || [];
+                categoriasAbertas = parsed.categoriasAbertas || {};
+            }
+        }
+    } else {
+        // Fallback para dados não criptografados (compatibilidade)
+        const dados = localStorage.getItem(`progresso_${usuarioLogado.codigo}`);
+        if (dados) {
+            const parsed = JSON.parse(dados);
+            progressoAulas = parsed.progressoAulas || {};
+            aulasConcluidas = parsed.aulasConcluidas || [];
+            categoriasAbertas = parsed.categoriasAbertas || {};
+        }
     }
 }
 
@@ -272,9 +280,18 @@ function salvarDadosUsuario() {
     const dados = {
         progressoAulas: progressoAulas,
         aulasConcluidas: aulasConcluidas,
-        categoriasAbertas: categoriasAbertas
+        categoriasAbertas: categoriasAbertas,
+        timestamp: Date.now()
     };
-    localStorage.setItem(`progresso_${usuarioLogado.codigo}`, JSON.stringify(dados));
+    
+    try {
+        // Tentar criptografar
+        const dadosCriptografados = btoa(JSON.stringify(dados));
+        localStorage.setItem(`progresso_${usuarioLogado.codigo}`, dadosCriptografados);
+    } catch (e) {
+        // Fallback para salvar sem criptografia
+        localStorage.setItem(`progresso_${usuarioLogado.codigo}`, JSON.stringify(dados));
+    }
 }
 
 function fazerLogout() {
