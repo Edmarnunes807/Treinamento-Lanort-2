@@ -827,7 +827,7 @@
     </div>
 
     <script>
-        // URLs das APIs
+        // ✅ NOVA API URL
         const API_URL = "https://script.google.com/macros/s/AKfycbwiaHzFF6aCpDT9OByOnL5m-JTw8Eipos-4lhIZijJTvBauYurSoStx_aZJAshm7EMlug/exec";
         const API_AULAS = "https://script.google.com/macros/s/AKfycbwiaHzFF6aCpDT9OByOnL5m-JTw8Eipos-4lhIZijJTvBauYurSoStx_aZJAshm7EMlug/exec";
         
@@ -937,7 +937,7 @@
             });
         }
 
-        // ✅ NOVA FUNÇÃO: REGISTRAR LOG DE ACESSO
+        // ✅ FUNÇÃO CORRIGIDA: REGISTRAR LOG DE ACESSO
         function registrarLogAcesso(arquivo) {
             if (!usuarioLogado || !usuarioLogado.codigo) {
                 console.error('Usuário não logado para registrar log');
@@ -968,7 +968,7 @@
                     console.log('✅ Log registrado com sucesso:', dadosLog);
                 } else {
                     console.error('❌ Erro ao registrar log:', data.mensagem);
-                // Fallback: tentar registrar via GET
+                    // Fallback: tentar registrar via GET
                     registrarLogFallback(dadosLog);
                 }
             })
@@ -1000,18 +1000,24 @@
             });
         }
 
-        // ✅ FUNÇÃO MODIFICADA: ABRIR LINK COM REGISTRO DE LOG
-        function abrirLinkComLog(arquivo, event) {
+        // ✅ FUNÇÃO CORRIGIDA: ABRIR LINK COM REGISTRO DE LOG
+        function abrirLinkComLog(arquivoNome, arquivoLink, arquivoTipo, event) {
             event.preventDefault();
             
-            console.log('🔗 Abrindo link com registro:', arquivo);
+            console.log('🔗 Abrindo link com registro:', { arquivoNome, arquivoLink, arquivoTipo });
+            
+            const arquivo = {
+                nome: arquivoNome,
+                link: arquivoLink,
+                tipo: arquivoTipo
+            };
             
             // Primeiro registra o log
             registrarLogAcesso(arquivo);
             
             // Depois abre o link em nova aba
             setTimeout(() => {
-                window.open(arquivo.link, '_blank');
+                window.open(arquivoLink, '_blank');
             }, 500);
             
             // Fecha o modal após um breve delay
@@ -1142,6 +1148,7 @@
             return `${dia}/${mes}/${ano} ${horas}:${minutos}:${segundos}`;
         }
 
+        // ✅ FUNÇÃO CORRIGIDA: ABRIR ACESSOS
         function abrirAcessos() {
             const modal = document.getElementById('acessos-modal');
             const lista = document.getElementById('acessos-lista');
@@ -1160,6 +1167,7 @@
                     const botaoClass = isDownload ? 'arquivo-download' : 'arquivo-link';
                     const botaoText = isDownload ? '📥 Download' : '🔗 Acessar';
                     
+                    // ✅ CORREÇÃO: Passando os parâmetros individualmente para a função
                     html += `
                         <div class="arquivo-item">
                             <div class="arquivo-info">
@@ -1169,7 +1177,7 @@
                             ${arquivo.link ? `
                                 <a href="${arquivo.link}" 
                                    class="${botaoClass}"
-                                   onclick="abrirLinkComLog(${JSON.stringify(arquivo).replace(/"/g, '&quot;')}, event)">
+                                   onclick="abrirLinkComLog('${arquivo.nome.replace(/'/g, "\\'")}', '${arquivo.link}', '${arquivo.tipo || 'link'}', event)">
                                     ${botaoText}
                                 </a>
                             ` : '<span style="color: #95a5a6;">Sem link</span>'}
